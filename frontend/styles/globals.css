@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Geist", "Satoshi", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --color-background: oklch(0.975 0.006 210);
+  --color-surface: oklch(0.99 0.004 210);
+  --color-surface-raised: oklch(0.955 0.007 210);
+  --color-foreground: oklch(0.205 0.018 230);
+  --color-muted: oklch(0.505 0.018 230);
+  --color-line: oklch(0.87 0.012 220);
+  --color-accent: oklch(0.55 0.11 175);
+  --color-accent-strong: oklch(0.42 0.115 175);
+  --color-success: oklch(0.56 0.11 145);
+  --color-warning: oklch(0.69 0.12 72);
+  --color-danger: oklch(0.57 0.11 25);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--color-background);
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 78% 12%, color-mix(in oklch, var(--color-accent) 12%, transparent), transparent 28rem),
+    linear-gradient(135deg, var(--color-background), oklch(0.958 0.006 235));
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  text-rendering: geometricPrecision;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-accent) 24%, transparent);
+}
+
+.shell-grid {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.fade-up {
+  animation: fade-up 620ms var(--ease-out) both;
+}
+
+.fade-up-delay-1 {
+  animation: fade-up 620ms var(--ease-out) 80ms both;
+}
+
+.fade-up-delay-2 {
+  animation: fade-up 620ms var(--ease-out) 160ms both;
+}
+
+.scan-line {
+  animation: scan-line 2200ms var(--ease-in-out) infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@media (max-width: 900px) {
+  .shell-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

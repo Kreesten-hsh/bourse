@@ -1,0 +1,150 @@
+import type { Opportunity } from "@/types/opportunity";
+
+export const sampleOpportunities: ReadonlyArray<Opportunity> = [
+  {
+    id: "african-cyber-fellows-2026",
+    title: "African Cyber Fellows Program 2026",
+    organization: "Digital Resilience Initiative",
+    programName: "African Cyber Fellows",
+    sourceName: "Opportunities for Youth",
+    sourceUrl: "https://opportunitiesforyouth.org/",
+    officialApplicationUrl: "https://opportunitiesforyouth.org/",
+    collectedAt: "2026-06-09T18:00:00.000Z",
+    updatedAt: "2026-06-09T18:00:00.000Z",
+    type: "fellowship",
+    domain: "cybersecurity",
+    destinationCountry: "Rwanda",
+    destinationCity: "Kigali",
+    locationMode: "onsite",
+    duration: "8 weeks",
+    level: "student",
+    deadline: "2026-07-02",
+    deadlineConfidence: "confirmed",
+    daysRemaining: 23,
+    isExpired: false,
+    fundingStatus: "fully_funded",
+    fundingConfidence: "confirmed",
+    benefits: [
+      { label: "Monthly allowance", value: "USD 650", confirmed: true },
+      { label: "Round-trip travel", value: "Covered", confirmed: true },
+      { label: "Accommodation", value: "Provided during residency", confirmed: true },
+      { label: "Mentorship", value: "Security mentors and lab access", confirmed: true }
+    ],
+    eligibility: [
+      { label: "Region", value: "Open to African applicants", blocking: false },
+      { label: "Education", value: "Undergraduate students accepted", blocking: false },
+      { label: "Domain", value: "Cybersecurity, software or ICT profile", blocking: false },
+      { label: "Language", value: "English working proficiency", blocking: false }
+    ],
+    documents: [
+      { label: "CV", status: "ready" },
+      { label: "Motivation letter", status: "missing" },
+      { label: "GitHub or project links", status: "ready" },
+      { label: "Passport", status: "to_update" }
+    ],
+    fitScore: 91,
+    scoreBand: "priority",
+    scoreExplanation: ["Fully funded", "Cybersecurity domain", "Open to African applicants", "Undergraduate profile accepted"],
+    matchedStrengths: ["Benin Cyber Shield", "FastAPI", "fraud detection", "student profile"],
+    blockingRisks: ["Motivation letter must clearly connect Mobile Money fraud detection to regional cyber resilience."],
+    applicationAngle: "Lead with Benin Cyber Shield as a concrete cybersecurity product for a local financial-risk problem.",
+    status: "priority",
+    notes: ""
+  },
+  {
+    id: "undp-digital-transformation-internship",
+    title: "Digital Transformation Internship",
+    organization: "United Nations Development Programme",
+    programName: "ICT and Digital Transformation Internship",
+    sourceName: "UNJobs",
+    sourceUrl: "https://unjobs.org/",
+    officialApplicationUrl: "https://unjobs.org/",
+    collectedAt: "2026-06-09T17:25:00.000Z",
+    updatedAt: "2026-06-09T17:25:00.000Z",
+    type: "internship",
+    domain: "digital_transformation",
+    destinationCountry: "Remote",
+    destinationCity: null,
+    locationMode: "remote",
+    duration: "6 months",
+    level: "student",
+    deadline: "2026-06-22",
+    deadlineConfidence: "inferred",
+    daysRemaining: 13,
+    isExpired: false,
+    fundingStatus: "paid",
+    fundingConfidence: "partial",
+    benefits: [
+      { label: "Stipend", value: "May be provided depending on duty station", confirmed: false },
+      { label: "Remote work", value: "Possible", confirmed: true },
+      { label: "UN experience", value: "Digital public service exposure", confirmed: true }
+    ],
+    eligibility: [
+      { label: "Education", value: "Currently enrolled or recently graduated", blocking: false },
+      { label: "Skills", value: "Web development, data tools, documentation", blocking: false },
+      { label: "Language", value: "English required, French is an advantage", blocking: false },
+      { label: "Funding", value: "Stipend details must be verified", blocking: true }
+    ],
+    documents: [
+      { label: "CV", status: "ready" },
+      { label: "Cover letter", status: "missing" },
+      { label: "Proof of enrollment", status: "missing" },
+      { label: "LinkedIn", status: "ready" }
+    ],
+    fitScore: 74,
+    scoreBand: "analyze",
+    scoreExplanation: ["Remote option", "Digital transformation domain", "Student profile accepted", "Funding not fully confirmed"],
+    matchedStrengths: ["React", "FastAPI", "Laravel", "documentation"],
+    blockingRisks: ["Stipend and exact eligibility must be checked on the official page before prioritizing."],
+    applicationAngle: "Position yourself as a software builder who can connect public-service needs with practical web systems.",
+    status: "to_analyze",
+    notes: ""
+  },
+  {
+    id: "mastercard-foundation-software-training",
+    title: "Software Engineering Training for Young Africans",
+    organization: "Mastercard Foundation Partner Network",
+    programName: "Young Africa Works Digital Skills",
+    sourceName: "Manual watchlist",
+    sourceUrl: "https://mastercardfdn.org/",
+    officialApplicationUrl: "https://mastercardfdn.org/",
+    collectedAt: "2026-06-09T16:10:00.000Z",
+    updatedAt: "2026-06-09T16:10:00.000Z",
+    type: "training",
+    domain: "software",
+    destinationCountry: "Online",
+    destinationCity: null,
+    locationMode: "remote",
+    duration: "12 weeks",
+    level: "beginner",
+    deadline: null,
+    deadlineConfidence: "unknown",
+    daysRemaining: null,
+    isExpired: false,
+    fundingStatus: "unknown",
+    fundingConfidence: "ambiguous",
+    benefits: [
+      { label: "Tuition", value: "Likely free, must be verified", confirmed: false },
+      { label: "Mentorship", value: "Career readiness sessions", confirmed: false },
+      { label: "Certificate", value: "Program certificate possible", confirmed: false }
+    ],
+    eligibility: [
+      { label: "Region", value: "African youth focus", blocking: false },
+      { label: "Education", value: "No degree requirement found yet", blocking: false },
+      { label: "Deadline", value: "Not confirmed", blocking: true }
+    ],
+    documents: [
+      { label: "CV", status: "ready" },
+      { label: "Short application form", status: "missing" },
+      { label: "Portfolio", status: "ready" }
+    ],
+    fitScore: 58,
+    scoreBand: "low_priority",
+    scoreExplanation: ["Software domain match", "Remote training", "Funding and deadline ambiguous"],
+    matchedStrengths: ["React", "Laravel", "Flutter"],
+    blockingRisks: ["Do not spend time applying until funding, deadline, and official partner link are confirmed."],
+    applicationAngle: "Use this only as a backup skill-building opportunity if it is confirmed free.",
+    status: "new",
+    notes: ""
+  }
+];

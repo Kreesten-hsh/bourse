@@ -1,0 +1,17 @@
+.next/
+node_modules/
+dist/
+build/
+coverage/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+frontend/.next/
+frontend/node_modules/
+frontend/.npm-cache/
+backend/.pytest_cache/
