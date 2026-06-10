@@ -1,1 +1,1 @@
-"""Core configuration."""
+"""Core infrastructure package."""
