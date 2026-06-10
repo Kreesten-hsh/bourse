@@ -83,20 +83,21 @@ export function OpportunityInbox() {
   }, [activeFilters, opportunities, searchTerm, sortMode]);
 
   useEffect(() => {
-    if (visibleOpportunities.length === 0) {
-      setSelectedOpportunityId(null);
+    if (selectedOpportunityId === null) {
       return;
     }
 
     const selectedIsVisible = visibleOpportunities.some((opportunity) => opportunity.id === selectedOpportunityId);
 
     if (!selectedIsVisible) {
-      setSelectedOpportunityId(visibleOpportunities[0].id);
+      setSelectedOpportunityId(null);
     }
   }, [selectedOpportunityId, visibleOpportunities]);
 
   const selectedOpportunity =
-    visibleOpportunities.find((opportunity) => opportunity.id === selectedOpportunityId) ?? visibleOpportunities[0] ?? null;
+    selectedOpportunityId === null
+      ? null
+      : visibleOpportunities.find((opportunity) => opportunity.id === selectedOpportunityId) ?? null;
 
   function toggleFilter(filter: OpportunityFilter): void {
     setActiveFilters((currentFilters) => {
@@ -164,7 +165,7 @@ export function OpportunityInbox() {
         <p className="text-sm text-ink-60">{visibleOpportunities.length} offre(s) lisible(s)</p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className={cn("grid gap-4", selectedOpportunity !== null && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
         <section className="panel min-w-0 overflow-hidden">
           <OpportunityTable
             opportunities={visibleOpportunities}
