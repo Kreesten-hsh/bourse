@@ -10,19 +10,20 @@ The user reviews international opportunities at a desk in the evening on a lapto
 
 ## Color Strategy
 
-Restrained product palette with one primary accent.
+Royal product palette with one primary action color and one atmospheric surface color.
 
-- Surface: off-white with a cool tint.
-- Secondary surface: very light zinc.
-- Text: charcoal, never pure black.
-- Muted text: cool gray.
-- Primary accent: deep petrol or forest green.
+- Primary action: royal blue `#3447AA`.
+- Atmospheric surface: powder pink `#FBEAEB`.
+- Surface: white rose, soft enough to sit on powder pink.
+- Secondary surface: pale royal blue or white rose.
+- Text: blue-black ink, never pure black.
+- Muted text: cool slate with royal undertone.
 - Success: restrained green.
 - Warning: amber.
 - Danger: muted red.
-- Info: desaturated blue.
+- Info: royal blue tint.
 
-Use accent only for selection, primary action, score emphasis, and important states.
+Use royal blue for command surfaces, selection, primary action, score emphasis, direct application links, and focus states. Use powder pink as the atmospheric base, not as a decorative accent.
 
 ## Typography
 
@@ -35,11 +36,12 @@ Use accent only for selection, primary action, score emphasis, and important sta
 
 ## Layout Principles
 
-- App shell with a minimal left rail, functional top bar, central workspace, and right inspector.
+- App shell with a strong top command bar, central workspace, and right inspector.
 - Lists and detail sections use spacing, dividers, and alignment before cards.
 - Cards are only used when they are interactive objects or persistent records.
 - Opportunity detail pages are airy, with sections that help comprehension.
 - Financial benefits and application links are visually easy to find.
+- The interface should feel like a mobility console, not a generic admin dashboard.
 
 ## Motion Principles
 
