@@ -2,24 +2,24 @@ import type { Opportunity } from "@/types/opportunity";
 import { applyOpportunityQuery, applyStatusChange, sortOpportunities } from "./opportunity-collection";
 import { sampleOpportunities } from "./sample-opportunities";
 
-const fundedCyberMatches = applyOpportunityQuery(sampleOpportunities, {
-  searchTerm: "cyber africa",
-  activeFilters: ["funded"]
+const fundedTechMatches = applyOpportunityQuery(sampleOpportunities, {
+  searchTerm: "CERN software",
+  activeFilters: ["funded", "tech"]
 });
 
-if (fundedCyberMatches.length !== 1 || fundedCyberMatches[0].id !== "african-cyber-fellows-2026") {
-  throw new Error("Search and funded filter must isolate the African cyber fellowship.");
+if (fundedTechMatches.length !== 1 || fundedTechMatches[0].id !== "cern-technical-student-2026") {
+  throw new Error("Search and filters must isolate the CERN technical internship.");
 }
 
 const deadlineSorted = sortOpportunities(sampleOpportunities, "deadline");
-const firstDatedOpportunity = deadlineSorted[0];
+const firstOpportunity = deadlineSorted[0];
 
-if (firstDatedOpportunity.id !== "undp-digital-transformation-internship") {
-  throw new Error("Deadline sorting must prioritize the closest confirmed deadline.");
+if (firstOpportunity.id !== "afdb-ict-internship-2026") {
+  throw new Error("Deadline sorting must prioritize the closest non-expired deadline.");
 }
 
 const originalOpportunity: Opportunity = sampleOpportunities[0];
-const updatedOpportunity = applyStatusChange(originalOpportunity, "preparing");
+const updatedOpportunity = applyStatusChange(originalOpportunity, "applying");
 
 if (originalOpportunity.status === updatedOpportunity.status) {
   throw new Error("Status change must return an updated opportunity.");

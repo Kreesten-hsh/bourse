@@ -18,6 +18,8 @@
     "@tanstack/react-table": "^8.21.3",
     "clsx": "^2.1.1",
     "motion": "^12.23.0",
+    "motion-dom": "^12.40.0",
+    "motion-utils": "^12.39.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

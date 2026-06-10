@@ -5,21 +5,40 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--color-background)",
-        foreground: "var(--color-foreground)",
-        muted: "var(--color-muted)",
-        line: "var(--color-line)",
-        accent: "var(--color-accent)",
-        "accent-strong": "var(--color-accent-strong)",
-        success: "var(--color-success)",
-        warning: "var(--color-warning)",
-        danger: "var(--color-danger)"
+        royal: "var(--royal)",
+        "royal-hover": "var(--royal-hover)",
+        "royal-active": "var(--royal-active)",
+        "royal-light": "var(--royal-light)",
+        "royal-pale": "var(--royal-pale)",
+        "royal-mid": "var(--royal-mid)",
+        pink: "var(--pink)",
+        ink: "var(--ink)",
+        "ink-60": "var(--ink-60)",
+        "ink-30": "var(--ink-30)",
+        surface: "var(--surface)",
+        "surface-2": "var(--surface-2)",
+        "surface-3": "var(--surface-3)",
+        border: "var(--border)",
+        "border-subtle": "var(--border-subtle)",
+        success: "var(--success)",
+        "success-bg": "var(--success-bg)",
+        warning: "var(--warning)",
+        "warning-bg": "var(--warning-bg)",
+        danger: "var(--danger)",
+        "danger-bg": "var(--danger-bg)"
       },
       borderRadius: {
-        ui: "8px"
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        full: "var(--radius-full)"
       },
       boxShadow: {
-        focus: "0 0 0 3px color-mix(in oklch, var(--color-accent) 20%, transparent)"
+        focus: "var(--shadow-focus)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)"
       }
     }
   },

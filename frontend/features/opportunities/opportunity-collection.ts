@@ -1,6 +1,7 @@
-import type { ApplicationStatus, FundingStatus, Opportunity } from "@/types/opportunity";
+import type { FundingType, Opportunity, OpportunityStatus } from "@/types/opportunity";
+import { getDaysUntilDeadline, isExpiredOpportunity } from "./opportunity-view-model";
 
-export type OpportunityFilter = "funded" | "tech" | "africa" | "urgent" | "needs_review";
+export type OpportunityFilter = "funded" | "tech" | "africa_global" | "urgent" | "needs_review" | "archived";
 export type OpportunitySort = "score" | "deadline" | "funding" | "recent";
 
 export type OpportunityQuery = Readonly<{
@@ -8,32 +9,23 @@ export type OpportunityQuery = Readonly<{
   activeFilters: ReadonlyArray<OpportunityFilter>;
 }>;
 
-const fundedStatuses: ReadonlySet<FundingStatus> = new Set(["fully_funded", "partially_funded", "paid"]);
-const technicalDomains: ReadonlySet<Opportunity["domain"]> = new Set([
-  "software",
-  "cybersecurity",
-  "data",
-  "ai",
-  "digital_transformation",
-  "ict",
-  "open_source",
-  "product_engineering",
-  "devops"
-]);
+const fundingRank: Record<FundingType, number> = {
+  full: 4,
+  partial: 3,
+  unknown: 2,
+  none: 1
+};
+
+const technicalTerms = ["informatique", "cybersécurité", "cybersecurite", "software", "data", "ict", "ai", "cyber"] as const;
 
 export function applyOpportunityQuery(
   opportunities: ReadonlyArray<Opportunity>,
   query: OpportunityQuery
 ): ReadonlyArray<Opportunity> {
-  const normalizedSearchTokens = query.searchTerm
-    .toLowerCase()
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const searchTokens = normalizeSearch(query.searchTerm);
 
   return opportunities.filter((opportunity) => {
-    const searchText = buildSearchText(opportunity);
-    const matchesSearch = normalizedSearchTokens.every((token) => searchText.includes(token));
+    const matchesSearch = searchTokens.every((token) => buildSearchText(opportunity).includes(token));
 
     if (!matchesSearch) {
       return false;
@@ -53,28 +45,29 @@ export function sortOpportunities(
     }
 
     if (sort === "funding") {
-      return fundingSortValue(second) - fundingSortValue(first);
+      return fundingRank[second.funding_type] - fundingRank[first.funding_type];
     }
 
     if (sort === "recent") {
-      return Date.parse(second.collectedAt) - Date.parse(first.collectedAt);
+      return Date.parse(second.collected_at) - Date.parse(first.collected_at);
     }
 
-    return second.fitScore - first.fitScore;
+    return second.score - first.score;
   });
 }
 
-export function applyStatusChange(opportunity: Opportunity, status: ApplicationStatus): Opportunity {
+export function applyStatusChange(opportunity: Opportunity, status: OpportunityStatus): Opportunity {
   return {
     ...opportunity,
-    status
+    status,
+    updated_at: new Date().toISOString()
   };
 }
 
 export function updateOpportunityStatus(
   opportunities: ReadonlyArray<Opportunity>,
   opportunityId: string,
-  status: ApplicationStatus
+  status: OpportunityStatus
 ): ReadonlyArray<Opportunity> {
   return opportunities.map((opportunity) => {
     if (opportunity.id !== opportunityId) {
@@ -85,64 +78,82 @@ export function updateOpportunityStatus(
   });
 }
 
+function matchesFilter(opportunity: Opportunity, filter: OpportunityFilter): boolean {
+  if (filter === "funded") {
+    return opportunity.funding_type === "full" || opportunity.monthly_stipend !== null || opportunity.tuition_covered === true;
+  }
+
+  if (filter === "tech") {
+    return hasTechnicalDomain(opportunity);
+  }
+
+  if (filter === "africa_global") {
+    return matchesAfricaOrGlobal(opportunity.required_nationality);
+  }
+
+  if (filter === "urgent") {
+    const days = getDaysUntilDeadline(opportunity);
+
+    return days !== null && days >= 0 && days < 14;
+  }
+
+  if (filter === "archived") {
+    return opportunity.status === "archived";
+  }
+
+  return opportunity.deadline_confirmed === false || opportunity.funding_type === "unknown";
+}
+
+function normalizeSearch(searchTerm: string): ReadonlyArray<string> {
+  return searchTerm
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 function buildSearchText(opportunity: Opportunity): string {
   return [
     opportunity.title,
     opportunity.organization,
-    opportunity.programName,
-    opportunity.sourceName,
+    opportunity.destination_country ?? "",
+    opportunity.destination_city ?? "",
     opportunity.type,
-    opportunity.domain,
-    opportunity.destinationCountry,
-    opportunity.destinationCity ?? "",
-    opportunity.fundingStatus,
-    ...opportunity.matchedStrengths,
-    ...opportunity.scoreExplanation
+    opportunity.funding_type,
+    opportunity.status,
+    ...opportunity.required_domains,
+    ...opportunity.required_languages,
+    opportunity.summary ?? "",
+    opportunity.eligibility_notes ?? ""
   ]
     .join(" ")
     .toLowerCase();
 }
 
-function matchesFilter(opportunity: Opportunity, filter: OpportunityFilter): boolean {
-  if (filter === "funded") {
-    return fundedStatuses.has(opportunity.fundingStatus) && opportunity.fundingConfidence !== "ambiguous";
+function hasTechnicalDomain(opportunity: Opportunity): boolean {
+  const domainText = opportunity.required_domains.join(" ").toLowerCase();
+
+  return technicalTerms.some((term) => domainText.includes(term));
+}
+
+function matchesAfricaOrGlobal(requiredNationality: string | null): boolean {
+  if (requiredNationality === null) {
+    return true;
   }
 
-  if (filter === "tech") {
-    return technicalDomains.has(opportunity.domain);
-  }
-
-  if (filter === "africa") {
-    return opportunity.eligibility.some((condition) => /africa|african|benin|global south/i.test(condition.value));
-  }
-
-  if (filter === "urgent") {
-    return opportunity.daysRemaining !== null && opportunity.daysRemaining <= 14;
-  }
-
-  return opportunity.deadlineConfidence === "unknown" || opportunity.fundingConfidence === "ambiguous";
+  return /africa|afrique|benin|bénin|global|international/i.test(requiredNationality);
 }
 
 function deadlineSortValue(opportunity: Opportunity): number {
-  if (opportunity.daysRemaining === null) {
+  if (isExpiredOpportunity(opportunity)) {
     return Number.POSITIVE_INFINITY;
   }
 
-  if (opportunity.isExpired) {
+  const days = getDaysUntilDeadline(opportunity);
+
+  if (days === null) {
     return Number.POSITIVE_INFINITY;
   }
 
-  return opportunity.daysRemaining;
-}
-
-function fundingSortValue(opportunity: Opportunity): number {
-  const values: Record<FundingStatus, number> = {
-    fully_funded: 5,
-    paid: 4,
-    partially_funded: 3,
-    unknown: 2,
-    unpaid: 1
-  };
-
-  return values[opportunity.fundingStatus];
+  return days;
 }

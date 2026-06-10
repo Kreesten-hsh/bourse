@@ -1,5 +1,5 @@
-import { OpportunityInbox } from "@/features/opportunities/opportunity-inbox";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return <OpportunityInbox />;
+export default function HomePage() {
+  redirect("/opportunities");
 }

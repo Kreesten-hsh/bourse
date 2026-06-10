@@ -1,32 +1,57 @@
-export type OpportunityType =
-  | "scholarship"
-  | "internship"
-  | "fellowship"
-  | "training"
-  | "job"
-  | "volunteering"
-  | "exchange"
-  | "competition";
+export type OpportunityType = "scholarship" | "internship" | "job" | "fellowship" | "training" | "volunteer";
+export type FundingType = "full" | "partial" | "none" | "unknown";
+export type OpportunityRequiredLevel = "undergrad" | "masters" | "phd" | "professional" | "any";
+export type OpportunityStatus = "new" | "analyzing" | "priority" | "applying" | "applied" | "result" | "archived";
 
-export type OpportunityDomain =
-  | "software"
-  | "cybersecurity"
-  | "data"
-  | "ai"
-  | "digital_transformation"
-  | "ict"
-  | "open_source"
-  | "product_engineering"
-  | "devops";
+export type ScoreBreakdown = Readonly<Record<string, number>>;
 
-export type LocationMode = "onsite" | "hybrid" | "remote";
-export type OpportunityLevel = "student" | "graduate" | "professional" | "beginner" | "advanced";
-export type DeadlineConfidence = "confirmed" | "inferred" | "unknown";
-export type FundingStatus = "fully_funded" | "partially_funded" | "paid" | "unpaid" | "unknown";
-export type FundingConfidence = "confirmed" | "partial" | "ambiguous" | "absent";
-export type ScoreBand = "priority" | "analyze" | "low_priority" | "archive_candidate";
-export type ApplicationStatus = "new" | "to_analyze" | "priority" | "preparing" | "applied" | "result" | "archived";
-export type DocumentStatus = "ready" | "missing" | "optional" | "to_update";
+export type Opportunity = Readonly<{
+  id: string;
+  external_id: string;
+  source_name: string;
+  source_url: string;
+  official_url: string;
+  title: string;
+  organization: string;
+  type: OpportunityType;
+  destination_country: string | null;
+  destination_city: string | null;
+  is_remote: boolean;
+  deadline: string | null;
+  deadline_confirmed: boolean;
+  funding_type: FundingType;
+  monthly_stipend: number | null;
+  monthly_stipend_currency: string | null;
+  travel_covered: boolean | null;
+  housing_covered: boolean | null;
+  tuition_covered: boolean | null;
+  visa_covered: boolean | null;
+  insurance_covered: boolean | null;
+  meals_covered: boolean | null;
+  application_fee: boolean;
+  required_nationality: string | null;
+  age_min: number | null;
+  age_max: number | null;
+  required_level: OpportunityRequiredLevel;
+  required_domains: ReadonlyArray<string>;
+  required_experience_years: number | null;
+  required_languages: ReadonlyArray<string>;
+  required_documents: ReadonlyArray<string>;
+  raw_description: string;
+  summary: string | null;
+  eligibility_notes: string | null;
+  risks: string | null;
+  candidacy_angle: string | null;
+  score: number;
+  score_breakdown: ScoreBreakdown;
+  status: OpportunityStatus;
+  is_duplicate: boolean;
+  duplicate_of_id: string | null;
+  created_at: string;
+  updated_at: string;
+  collected_at: string;
+  expires_at: string | null;
+}>;
 
 export type OpportunityBenefit = Readonly<{
   label: string;
@@ -34,49 +59,8 @@ export type OpportunityBenefit = Readonly<{
   confirmed: boolean;
 }>;
 
-export type EligibilityCondition = Readonly<{
+export type OpportunityCondition = Readonly<{
   label: string;
   value: string;
   blocking: boolean;
-}>;
-
-export type DocumentRequirement = Readonly<{
-  label: string;
-  status: DocumentStatus;
-}>;
-
-export type Opportunity = Readonly<{
-  id: string;
-  title: string;
-  organization: string;
-  programName: string;
-  sourceName: string;
-  sourceUrl: string;
-  officialApplicationUrl: string;
-  collectedAt: string;
-  updatedAt: string;
-  type: OpportunityType;
-  domain: OpportunityDomain;
-  destinationCountry: string;
-  destinationCity: string | null;
-  locationMode: LocationMode;
-  duration: string | null;
-  level: OpportunityLevel;
-  deadline: string | null;
-  deadlineConfidence: DeadlineConfidence;
-  daysRemaining: number | null;
-  isExpired: boolean;
-  fundingStatus: FundingStatus;
-  fundingConfidence: FundingConfidence;
-  benefits: ReadonlyArray<OpportunityBenefit>;
-  eligibility: ReadonlyArray<EligibilityCondition>;
-  documents: ReadonlyArray<DocumentRequirement>;
-  fitScore: number;
-  scoreBand: ScoreBand;
-  scoreExplanation: ReadonlyArray<string>;
-  matchedStrengths: ReadonlyArray<string>;
-  blockingRisks: ReadonlyArray<string>;
-  applicationAngle: string;
-  status: ApplicationStatus;
-  notes: string;
 }>;

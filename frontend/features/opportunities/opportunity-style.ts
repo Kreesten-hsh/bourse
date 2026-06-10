@@ -1,49 +1,59 @@
-import type { ApplicationStatus, DocumentStatus, ScoreBand } from "@/types/opportunity";
+import type { OpportunityStatus, OpportunityType } from "@/types/opportunity";
 
-export const scoreBandLabel: Record<ScoreBand, string> = {
-  priority: "Prioritaire",
-  analyze: "A analyser",
-  low_priority: "Faible priorite",
-  archive_candidate: "A archiver"
-};
+export type ScoreBand = "high" | "mid" | "low";
+
+export function getScoreBand(score: number): ScoreBand {
+  if (score >= 80) {
+    return "high";
+  }
+
+  if (score >= 60) {
+    return "mid";
+  }
+
+  return "low";
+}
 
 export const scoreBandClassName: Record<ScoreBand, string> = {
-  priority: "border-[rgb(44_141_103_/_0.28)] bg-[rgb(44_141_103_/_0.1)] text-success",
-  analyze: "border-[rgb(52_71_170_/_0.28)] bg-[rgb(52_71_170_/_0.1)] text-accent-strong",
-  low_priority: "border-[rgb(165_106_23_/_0.28)] bg-[rgb(165_106_23_/_0.1)] text-warning",
-  archive_candidate: "border-[rgb(184_68_85_/_0.28)] bg-[rgb(184_68_85_/_0.1)] text-danger"
+  high: "bg-[var(--score-high)] text-surface-2",
+  mid: "bg-[var(--score-mid)] text-surface-2",
+  low: "bg-[var(--score-low)] text-surface-2"
 };
 
-export const statusClassName: Record<ApplicationStatus, string> = {
-  new: "border-[rgb(109_114_144_/_0.24)] bg-white/40 text-muted",
-  to_analyze: "border-[rgb(52_71_170_/_0.24)] bg-[rgb(52_71_170_/_0.08)] text-accent-strong",
-  priority: "border-[rgb(44_141_103_/_0.24)] bg-[rgb(44_141_103_/_0.1)] text-success",
-  preparing: "border-[rgb(165_106_23_/_0.24)] bg-[rgb(165_106_23_/_0.09)] text-warning",
-  applied: "border-[rgb(52_71_170_/_0.24)] bg-[rgb(52_71_170_/_0.12)] text-accent-strong",
-  result: "border-[rgb(17_25_54_/_0.18)] bg-[rgb(17_25_54_/_0.07)] text-foreground",
-  archived: "border-[rgb(184_68_85_/_0.22)] bg-[rgb(184_68_85_/_0.08)] text-danger"
-};
-
-export const statusLabel: Record<ApplicationStatus, string> = {
+export const statusLabel: Record<OpportunityStatus, string> = {
   new: "Nouveau",
-  to_analyze: "A analyser",
+  analyzing: "À analyser",
   priority: "Prioritaire",
-  preparing: "Dossier",
-  applied: "Postule",
-  result: "Resultat",
-  archived: "Archive"
+  applying: "Dossier en cours",
+  applied: "Postulé",
+  result: "Résultat",
+  archived: "Archivée"
 };
 
-export const documentStatusLabel: Record<DocumentStatus, string> = {
-  ready: "Pret",
-  missing: "Manquant",
-  optional: "Optionnel",
-  to_update: "A mettre a jour"
+export const statusClassName: Record<OpportunityStatus, string> = {
+  new: "border-border bg-surface-2 text-ink-60",
+  analyzing: "border-royal-mid bg-royal-light text-royal",
+  priority: "border-success bg-success-bg text-success",
+  applying: "border-warning bg-warning-bg text-warning",
+  applied: "border-royal bg-[var(--royal-alpha10)] text-royal",
+  result: "border-border bg-surface-3 text-ink",
+  archived: "border-danger bg-danger-bg text-danger"
 };
 
-export const documentStatusClassName: Record<DocumentStatus, string> = {
-  ready: "text-success",
-  missing: "text-danger",
-  optional: "text-muted",
-  to_update: "text-warning"
+export const typeLabel: Record<OpportunityType, string> = {
+  scholarship: "Bourse",
+  internship: "Stage",
+  job: "Emploi",
+  fellowship: "Fellowship",
+  training: "Formation",
+  volunteer: "Volontariat"
+};
+
+export const typeClassName: Record<OpportunityType, string> = {
+  scholarship: "border-royal bg-[var(--royal-alpha10)] text-royal",
+  internship: "border-success bg-success-bg text-success",
+  job: "border-warning bg-warning-bg text-warning",
+  fellowship: "border-royal-mid bg-royal-light text-royal",
+  training: "border-pink-border bg-pink text-pink-text",
+  volunteer: "border-border bg-surface-3 text-ink-60"
 };

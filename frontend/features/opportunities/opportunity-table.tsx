@@ -1,126 +1,161 @@
-import { ArrowUpRight, CalendarBlank, CompassRose, MapPin, MoneyWavy } from "@phosphor-icons/react/dist/ssr";
+"use client";
+
+import { ArrowsMerge, CalendarBlank, CloudWarning, CurrencyCircleDollar } from "@phosphor-icons/react";
+import { motion } from "motion/react";
 
 import { cn } from "@/lib/cn";
+import { rowMotion, scoreBadgeMotion } from "@/lib/motion";
 import type { Opportunity } from "@/types/opportunity";
 import {
   formatDeadlineLabel,
   formatDestination,
-  formatFundingStatus,
-  formatOpportunityType,
-  summarizeOpportunityBenefits
+  formatFundingSummary,
+  isExpiredOpportunity
 } from "./opportunity-view-model";
-import { scoreBandClassName, scoreBandLabel, statusClassName, statusLabel } from "./opportunity-style";
+import { getScoreBand, scoreBandClassName, statusClassName, statusLabel, typeClassName, typeLabel } from "./opportunity-style";
 
 type OpportunityTableProps = Readonly<{
   opportunities: ReadonlyArray<Opportunity>;
-  selectedOpportunityId: string;
+  selectedOpportunityId: string | null;
   onSelectOpportunity: (opportunity: Opportunity) => void;
+  onSync: () => void;
 }>;
 
 export function OpportunityTable({
   opportunities,
   selectedOpportunityId,
-  onSelectOpportunity
+  onSelectOpportunity,
+  onSync
 }: OpportunityTableProps) {
   if (opportunities.length === 0) {
-    return (
-      <div className="px-6 py-14 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] bg-[rgb(52_71_170_/_0.08)] text-accent">
-          <CompassRose size={24} weight="duotone" />
-        </div>
-        <h3 className="mt-5 text-xl font-semibold tracking-[-0.025em]">Aucune offre ne correspond aux filtres</h3>
-        <p className="mx-auto mt-2 max-w-[54ch] text-sm leading-6 text-muted">
-          Retire un filtre ou cherche avec un terme plus large. Les offres non confirmees restent visibles avec le filtre
-          "A verifier".
-        </p>
-      </div>
-    );
+    return <OpportunityEmptyState onSync={onSync} />;
   }
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[62rem] p-3">
-        <div className="grid grid-cols-[5.5rem_minmax(19rem,1.6fr)_minmax(14rem,1fr)_minmax(11rem,0.8fr)_9rem] px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-          <span>Fit</span>
-          <span>Opportunite</span>
-          <span>Avantages</span>
-          <span>Deadline</span>
-          <span>Workflow</span>
-        </div>
-
-        <div className="space-y-2">
+      <table className="min-w-[1120px] w-full border-separate border-spacing-0">
+        <thead>
+          <tr className="text-left text-xs font-semibold uppercase tracking-[0.08em] text-ink-60">
+            <th className="px-4 py-3">Score</th>
+            <th className="px-4 py-3">Titre</th>
+            <th className="px-4 py-3">Organisation</th>
+            <th className="px-4 py-3">Pays</th>
+            <th className="px-4 py-3">Type</th>
+            <th className="px-4 py-3">Financement</th>
+            <th className="px-4 py-3">Deadline</th>
+            <th className="px-4 py-3">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
           {opportunities.map((opportunity, index) => {
             const isSelected = opportunity.id === selectedOpportunityId;
+            const isExpired = isExpiredOpportunity(opportunity);
 
             return (
-              <button
+              <motion.tr
                 key={opportunity.id}
-                type="button"
+                {...rowMotion(index)}
                 onClick={() => onSelectOpportunity(opportunity)}
-                style={{ animationDelay: `${index * 45}ms` }}
                 className={cn(
-                  "fade-scale grid w-full grid-cols-[5.5rem_minmax(19rem,1.6fr)_minmax(14rem,1fr)_minmax(11rem,0.8fr)_9rem] items-center rounded-[22px] border px-4 py-4 text-left transition duration-200",
-                  "hover:-translate-y-0.5 hover:border-accent/35 hover:bg-white/82 hover:shadow-[0_18px_42px_rgb(52_71_170_/_0.12)] active:scale-[0.997]",
-                  isSelected
-                    ? "border-accent bg-white shadow-[0_18px_52px_rgb(52_71_170_/_0.18)]"
-                    : "border-white/70 bg-white/48"
+                  "group cursor-pointer border-l-2 border-transparent transition-colors duration-150 hover:bg-surface-3",
+                  isSelected && "border-l-royal bg-[var(--royal-alpha10)]",
+                  isExpired && "text-ink-30"
                 )}
               >
-                <span>
-                  <span className="mono block text-2xl font-semibold tracking-[-0.04em] text-accent">{opportunity.fitScore}</span>
-                  <span className={cn("mt-2 inline-flex rounded-full border px-2 py-1 text-[11px] font-semibold", scoreBandClassName[opportunity.scoreBand])}>
-                    {scoreBandLabel[opportunity.scoreBand]}
+                <td className="border-t border-border-subtle px-4 py-3">
+                  <motion.span
+                    {...scoreBadgeMotion}
+                    className={cn(
+                      "mono flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold",
+                      scoreBandClassName[getScoreBand(opportunity.score)]
+                    )}
+                  >
+                    {opportunity.score}
+                  </motion.span>
+                </td>
+                <td className="max-w-[330px] border-t border-border-subtle px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-ink">{opportunity.title}</span>
+                    {opportunity.is_duplicate ? (
+                      <ArrowsMerge
+                        size={16}
+                        className="shrink-0 text-warning"
+                        aria-label="Doublon détecté"
+                        title={`Similaire à ${opportunity.duplicate_of_id ?? "une autre source"}`}
+                      />
+                    ) : null}
+                  </div>
+                  <p className="mt-1 line-clamp-1 text-xs text-ink-60">{opportunity.summary ?? opportunity.source_name}</p>
+                </td>
+                <td className="border-t border-border-subtle px-4 py-3 text-sm text-ink-60">{opportunity.organization}</td>
+                <td className="border-t border-border-subtle px-4 py-3 text-sm text-ink-60">{formatDestination(opportunity)}</td>
+                <td className="border-t border-border-subtle px-4 py-3">
+                  <span className={cn("rounded-full border px-2 py-1 text-xs font-semibold", typeClassName[opportunity.type])}>
+                    {typeLabel[opportunity.type]}
                   </span>
-                </span>
-
-                <span className="min-w-0 pr-5">
-                  <span className="block truncate text-base font-semibold tracking-[-0.02em] text-foreground">
-                    {opportunity.title}
+                </td>
+                <td className="border-t border-border-subtle px-4 py-3">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink">
+                    <CurrencyCircleDollar size={17} className="text-royal" />
+                    {formatFundingSummary(opportunity)}
                   </span>
-                  <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                    <span>{opportunity.organization}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin size={13} className="text-accent" />
-                      {formatDestination(opportunity)}
-                    </span>
-                    <span>{formatOpportunityType(opportunity)}</span>
+                </td>
+                <td className="border-t border-border-subtle px-4 py-3">
+                  <DeadlineCell opportunity={opportunity} />
+                </td>
+                <td className="border-t border-border-subtle px-4 py-3">
+                  <span className={cn("rounded-full border px-2 py-1 text-xs font-semibold", statusClassName[opportunity.status])}>
+                    {isExpired ? "Expirée" : statusLabel[opportunity.status]}
                   </span>
-                </span>
-
-                <span className="pr-4">
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <MoneyWavy size={16} weight="duotone" className="text-accent" />
-                    {formatFundingStatus(opportunity)}
-                  </span>
-                  <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted">
-                    {summarizeOpportunityBenefits(opportunity)}
-                  </span>
-                </span>
-
-                <span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <CalendarBlank size={16} weight="duotone" className="text-accent" />
-                    {formatDeadlineLabel(opportunity)}
-                  </span>
-                  <span className="mt-1 block text-xs text-muted">
-                    {opportunity.deadline ?? "Date non confirmee"}
-                  </span>
-                </span>
-
-                <span className="flex flex-col items-start gap-2">
-                  <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", statusClassName[opportunity.status])}>
-                    {statusLabel[opportunity.status]}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-accent">
-                    Ouvrir
-                    <ArrowUpRight size={12} />
-                  </span>
-                </span>
-              </button>
+                </td>
+              </motion.tr>
             );
           })}
-        </div>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DeadlineCell({ opportunity }: Readonly<{ opportunity: Opportunity }>) {
+  const label = formatDeadlineLabel(opportunity);
+  const isUnknown = opportunity.deadline === null || opportunity.deadline_confirmed === false;
+  const isUrgent = opportunity.deadline !== null && Date.parse(opportunity.deadline) - Date.now() < 7 * 86_400_000;
+
+  if (isUnknown) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-warning bg-warning-bg px-2 py-1 text-xs font-semibold text-warning">
+        <CloudWarning size={14} />
+        À vérifier
+      </span>
+    );
+  }
+
+  return (
+    <span className={cn("mono inline-flex items-center gap-1.5 text-xs font-semibold", isUrgent ? "text-danger" : "text-ink-60")}>
+      <CalendarBlank size={15} />
+      {label}
+    </span>
+  );
+}
+
+function OpportunityEmptyState({ onSync }: Readonly<{ onSync: () => void }>) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-xl border border-royal-mid bg-royal-light text-royal">
+        <CloudWarning size={28} weight="duotone" />
       </div>
+      <p className="mt-4 text-sm font-semibold text-ink">Aucune opportunité pour ces filtres</p>
+      <p className="mt-2 max-w-[34rem] text-sm leading-6 text-ink-60">
+        Les filtres actifs ont masqué toutes les offres. Lance une sync ou retire un filtre.
+      </p>
+      <button
+        type="button"
+        onClick={onSync}
+        className="mt-5 rounded-md bg-royal px-4 py-2 text-sm font-semibold text-surface-2 transition-colors hover:bg-royal-hover active:bg-royal-active"
+      >
+        Lancer une sync
+      </button>
     </div>
   );
 }
