@@ -25,7 +25,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
     <article className="mx-auto grid max-w-5xl gap-4">
       <header className="panel p-6">
         <p className="text-sm font-semibold text-royal">{opportunity.organization}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-ink">{opportunity.title}</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-ink">{opportunity.title}</h1>
         <p className="mt-3 text-sm text-ink-60">{formatDestination(opportunity)} · {formatFundingSummary(opportunity)}</p>
         <a
           href={opportunity.official_url}

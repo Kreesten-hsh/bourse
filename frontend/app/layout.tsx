@@ -29,9 +29,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="fr">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <AppProviders>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface-2 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-royal focus:shadow-focus"
+          >
+            Aller au contenu
+          </a>
           <div className="app-shell">
             <AppNav />
-            <main className="app-main">{children}</main>
+            <main id="main-content" className="app-main" tabIndex={-1}>
+              {children}
+            </main>
           </div>
         </AppProviders>
       </body>

@@ -24,7 +24,7 @@ export default function SettingsPage() {
 function Field({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="rounded-md border border-border bg-surface-3 px-3 py-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.05em] text-ink-60">{label}</p>
+      <p className="text-xs font-semibold uppercase text-ink-60">{label}</p>
       <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
     </div>
   );

@@ -24,16 +24,19 @@ export function AppNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 z-30 flex h-dvh w-16 flex-col border-r border-border bg-surface-2 max-[760px]:h-16 max-[760px]:w-full max-[760px]:flex-row max-[760px]:border-b max-[760px]:border-r-0">
+    <aside className="sticky top-0 z-30 flex h-dvh w-[72px] flex-col border-r border-border-subtle bg-surface-2 backdrop-blur max-[760px]:h-16 max-[760px]:w-full max-[760px]:flex-row max-[760px]:border-b max-[760px]:border-r-0">
       <Link
         href="/opportunities"
-        className="flex h-16 w-16 shrink-0 items-center justify-center text-center text-[11px] font-semibold leading-3 text-royal"
+        className="fine-focus flex h-[72px] w-[72px] shrink-0 items-center justify-center text-center text-[11px] font-semibold leading-3 text-royal transition-colors hover:bg-royal-light max-[760px]:h-16 max-[760px]:w-20"
         aria-label="to the world"
       >
         to the<br />world
       </Link>
 
-      <nav className="flex flex-1 flex-col items-center gap-2 px-2 py-3 max-[760px]:flex-row max-[760px]:justify-end max-[760px]:overflow-x-auto">
+      <nav
+        aria-label="Navigation principale"
+        className="flex flex-1 flex-col items-center gap-2 px-3 py-4 max-[760px]:flex-row max-[760px]:justify-end max-[760px]:overflow-x-auto max-[760px]:py-2"
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -46,12 +49,12 @@ export function AppNav() {
               aria-current={isActive ? "page" : undefined}
               title={item.label}
               className={cn(
-                "group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md border-l-2 border-transparent text-ink-60 transition-colors duration-150 hover:bg-royal-light hover:text-royal",
-                isActive && "border-l-royal bg-[var(--royal-alpha10)] text-royal"
+                "fine-focus group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-l-2 border-transparent text-ink-60 transition duration-150 hover:-translate-y-px hover:bg-royal-light hover:text-royal active:translate-y-0",
+                isActive && "border-l-royal bg-[var(--royal-alpha10)] text-royal shadow-sm"
               )}
             >
               <Icon size={21} weight={isActive ? "duotone" : "regular"} />
-              <span className="pointer-events-none absolute left-[52px] top-1/2 z-40 -translate-y-1/2 rounded-md border border-border bg-surface-2 px-2 py-1 text-xs font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 max-[760px]:hidden">
+              <span className="pointer-events-none absolute left-[50px] top-1/2 z-40 -translate-y-1/2 rounded-md border border-border-subtle bg-surface-2 px-2 py-1 text-xs font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 max-[760px]:hidden">
                 {item.label}
               </span>
             </Link>

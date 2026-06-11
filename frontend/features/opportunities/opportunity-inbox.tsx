@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowsClockwise, CloudWarning, Funnel, MagnifyingGlass } from "@phosphor-icons/react";
+import { ArrowsClockwise, CloudWarning, Compass, Funnel, MagnifyingGlass } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 
@@ -16,6 +16,7 @@ import {
   sortOpportunities,
   updateOpportunityStatus
 } from "./opportunity-collection";
+import { getDaysUntilDeadline } from "./opportunity-view-model";
 import { OpportunityInspector } from "./opportunity-inspector";
 import { OpportunityTable } from "./opportunity-table";
 import { sampleOpportunities } from "./sample-opportunities";
@@ -23,6 +24,13 @@ import { sampleOpportunities } from "./sample-opportunities";
 type FilterOption = Readonly<{
   id: OpportunityFilter;
   label: string;
+}>;
+
+type HeroMetric = Readonly<{
+  label: string;
+  value: string;
+  detail: string;
+  tone: "royal" | "warning" | "quiet";
 }>;
 
 const filterOptions: ReadonlyArray<FilterOption> = [
@@ -82,6 +90,8 @@ export function OpportunityInbox() {
     return sortOpportunities(queried, sortMode);
   }, [activeFilters, opportunities, searchTerm, sortMode]);
 
+  const heroMetrics = useMemo(() => buildHeroMetrics(opportunities), [opportunities]);
+
   useEffect(() => {
     if (selectedOpportunityId === null) {
       return;
@@ -126,47 +136,67 @@ export function OpportunityInbox() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1560px] flex-col gap-4">
-      <TopBar
-        searchTerm={searchTerm}
-        sortMode={sortMode}
-        lastSyncLabel={lastSyncLabel}
-        syncPending={syncMutation.isPending}
-        onSearchChange={setSearchTerm}
-        onSortChange={setSortMode}
-        onSync={handleSync}
-      />
+    <div className="mx-auto flex max-w-[1480px] flex-col gap-6">
+      <OpportunityHero metrics={heroMetrics} lastSyncLabel={lastSyncLabel} />
 
       {opportunitiesQuery.isError ? <SourceErrorBanner /> : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {filterOptions.map((filter) => {
-            const isActive = activeFilters.includes(filter.id);
+      <section aria-labelledby="opportunity-command-title" className="premium-surface px-4 py-4 md:px-5 md:py-5">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+          <SearchCommand searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-            return (
-              <button
-                key={filter.id}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => toggleFilter(filter.id)}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors duration-150",
-                  isActive ? "border-royal bg-royal text-surface-2" : "border-border bg-surface-2 text-ink-60 hover:bg-royal-light hover:text-royal"
-                )}
-              >
-                <Funnel size={14} />
-                {filter.label}
-              </button>
-            );
-          })}
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <SortControl sortMode={sortMode} onSortChange={setSortMode} />
+            <motion.button
+              {...buttonTap}
+              type="button"
+              onClick={handleSync}
+              className={cn(
+                "fine-focus inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors duration-150",
+                syncMutation.isPending
+                  ? "border-royal bg-royal text-surface-2"
+                  : "border-border-subtle bg-surface-2 text-ink hover:bg-royal-light hover:text-royal"
+              )}
+            >
+              <ArrowsClockwise size={17} />
+              Sync
+            </motion.button>
+          </div>
         </div>
 
-        <p className="text-sm text-ink-60">{visibleOpportunities.length} offre(s) lisible(s)</p>
-      </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((filter) => {
+              const isActive = activeFilters.includes(filter.id);
 
-      <div className={cn("grid gap-4", selectedOpportunity !== null && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
-        <section className="panel min-w-0 overflow-hidden">
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => toggleFilter(filter.id)}
+                  className={cn(
+                    "fine-focus inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors duration-150",
+                    isActive
+                      ? "border-royal bg-royal text-surface-2"
+                      : "border-border-subtle bg-surface-2 text-ink-60 hover:bg-royal-light hover:text-royal"
+                  )}
+                >
+                  <Funnel size={14} />
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="text-sm text-ink-60" aria-live="polite">
+            {visibleOpportunities.length} opportunité(s) lisible(s)
+          </p>
+        </div>
+      </section>
+
+      <div className={cn("grid gap-5", selectedOpportunity !== null && "xl:grid-cols-[minmax(0,1fr)_440px]")}>
+        <section className="min-w-0">
           <OpportunityTable
             opportunities={visibleOpportunities}
             selectedOpportunityId={selectedOpportunity?.id ?? null}
@@ -181,74 +211,77 @@ export function OpportunityInbox() {
   );
 }
 
-type TopBarProps = Readonly<{
-  searchTerm: string;
-  sortMode: OpportunitySort;
-  lastSyncLabel: string;
-  syncPending: boolean;
-  onSearchChange: (value: string) => void;
-  onSortChange: (value: OpportunitySort) => void;
-  onSync: () => void;
-}>;
-
-function TopBar({
-  searchTerm,
-  sortMode,
-  lastSyncLabel,
-  syncPending,
-  onSearchChange,
-  onSortChange,
-  onSync
-}: TopBarProps) {
+function OpportunityHero({ metrics, lastSyncLabel }: Readonly<{ metrics: ReadonlyArray<HeroMetric>; lastSyncLabel: string }>) {
   return (
-    <header className="panel grid gap-3 p-4 lg:grid-cols-[220px_minmax(280px,1fr)_auto] lg:items-center">
+    <header className="grid gap-5 rounded-lg px-1 pt-2 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.74fr)] md:items-end">
       <div>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">Opportunités</h1>
-        <p className="mt-1 text-sm text-ink-60">Dernière sync : {lastSyncLabel}</p>
+        <p className="inline-flex items-center gap-2 text-sm font-semibold text-royal">
+          <Compass size={18} weight="duotone" />
+          Mobility Intelligence Command Center
+        </p>
+        <h1 className="mt-3 text-3xl font-semibold leading-tight text-ink md:text-[2.75rem]">
+          Good morning, Kreesten
+        </h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-ink-60">
+          Les opportunités internationales sont classées pour une lecture rapide: ce qui finance, ce qui presse, et ce qui mérite une candidature.
+        </p>
       </div>
 
-      <label className="relative block">
-        <span className="sr-only">Rechercher</span>
-        <MagnifyingGlass size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-royal" />
-        <input
-          value={searchTerm}
-          onChange={(event) => onSearchChange(event.target.value)}
-          className="h-11 w-full rounded-md border border-border bg-surface-2 pl-10 pr-3 text-sm text-ink outline-none transition-shadow placeholder:text-ink-30 focus:border-royal focus:shadow-focus"
-          placeholder="Rechercher par titre, organisation, pays..."
-          type="search"
-        />
-      </label>
-
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <select
-          value={sortMode}
-          onChange={(event) => onSortChange(event.target.value as OpportunitySort)}
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm text-ink outline-none focus:border-royal focus:shadow-focus"
-          aria-label="Trier les opportunités"
-        >
-          {Object.entries(sortLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <motion.button
-          {...buttonTap}
-          type="button"
-          onClick={onSync}
-          className={cn(
-            "inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors duration-150",
-            syncPending
-              ? "border-royal bg-royal text-surface-2"
-              : "border-border bg-transparent text-ink hover:bg-royal-light hover:text-royal"
-          )}
-        >
-          <ArrowsClockwise size={17} />
-          Sync
-        </motion.button>
+      <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
+        {metrics.map((metric) => (
+          <div key={metric.label} className={cn("rounded-md border px-4 py-3 shadow-sm", metricClassName[metric.tone])}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-ink-60">{metric.label}</p>
+              <span className="mono text-lg font-semibold text-ink">{metric.value}</span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-ink-60">{metric.detail}</p>
+          </div>
+        ))}
       </div>
+
+      <p className="text-xs text-ink-60 md:col-span-2">Dernière sync: {lastSyncLabel}</p>
     </header>
+  );
+}
+
+function SearchCommand({ searchTerm, onSearchChange }: Readonly<{ searchTerm: string; onSearchChange: (value: string) => void }>) {
+  return (
+    <label className="relative block">
+      <span id="opportunity-command-title" className="sr-only">
+        Recherche opportunités
+      </span>
+      <MagnifyingGlass size={23} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-royal" />
+      <input
+        value={searchTerm}
+        onChange={(event) => onSearchChange(event.target.value)}
+        className="fine-focus h-14 w-full rounded-lg border border-border-subtle bg-surface-2 pl-12 pr-4 text-base font-medium text-ink outline-none transition placeholder:text-ink-30"
+        placeholder="Rechercher titre, organisation, pays, domaine..."
+        type="search"
+      />
+    </label>
+  );
+}
+
+function SortControl({
+  sortMode,
+  onSortChange
+}: Readonly<{ sortMode: OpportunitySort; onSortChange: (value: OpportunitySort) => void }>) {
+  return (
+    <label className="inline-flex h-10 items-center gap-2 rounded-md border border-border-subtle bg-surface-2 px-3 text-sm text-ink-60">
+      <span>Trier</span>
+      <select
+        value={sortMode}
+        onChange={(event) => onSortChange(event.target.value as OpportunitySort)}
+        className="fine-focus bg-transparent text-sm font-semibold text-ink outline-none"
+        aria-label="Trier les opportunités"
+      >
+        {Object.entries(sortLabels).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -263,22 +296,64 @@ function SourceErrorBanner() {
 
 function OpportunityLoadingSkeleton() {
   return (
-    <div className="mx-auto grid max-w-[1560px] gap-4">
-      <div className="panel p-4">
-        <div className="skeleton h-7 w-48 rounded-md" />
-        <div className="skeleton mt-4 h-11 rounded-md" />
-      </div>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="panel p-4">
-          {Array.from({ length: 8 }, (_, index) => (
-            <div key={index} className="skeleton mb-3 h-14 rounded-md" />
+    <div className="mx-auto grid max-w-[1480px] gap-5">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_340px]">
+        <div>
+          <div className="skeleton h-5 w-64 rounded-md" />
+          <div className="skeleton mt-4 h-12 max-w-xl rounded-md" />
+          <div className="skeleton mt-4 h-5 max-w-2xl rounded-md" />
+        </div>
+        <div className="grid gap-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="skeleton h-20 rounded-md" />
           ))}
         </div>
-        <div className="panel p-4">
-          <div className="skeleton h-32 rounded-md" />
-          <div className="skeleton mt-4 h-52 rounded-md" />
-        </div>
+      </div>
+      <div className="premium-surface p-4">
+        <div className="skeleton h-14 rounded-lg" />
+      </div>
+      <div className="grid gap-3">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="skeleton h-36 rounded-lg" />
+        ))}
       </div>
     </div>
   );
 }
+
+function buildHeroMetrics(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<HeroMetric> {
+  const priorityCount = opportunities.filter((opportunity) => opportunity.score >= 80 && opportunity.status !== "archived").length;
+  const criticalCount = opportunities.filter((opportunity) => {
+    const daysUntilDeadline = getDaysUntilDeadline(opportunity);
+
+    return daysUntilDeadline !== null && daysUntilDeadline >= 0 && daysUntilDeadline < 14;
+  }).length;
+  const newCount = opportunities.filter((opportunity) => opportunity.status === "new").length;
+
+  return [
+    {
+      label: "Priorités fortes",
+      value: String(priorityCount),
+      detail: "Candidatures à lire avant tout le reste.",
+      tone: "royal"
+    },
+    {
+      label: "Fenêtre courte",
+      value: String(criticalCount),
+      detail: "Deadlines a moins de 14 jours.",
+      tone: "warning"
+    },
+    {
+      label: "Nouveaux signaux",
+      value: String(newCount),
+      detail: "Offres fraîches à qualifier.",
+      tone: "quiet"
+    }
+  ];
+}
+
+const metricClassName: Record<HeroMetric["tone"], string> = {
+  royal: "border-royal-mid bg-royal-light",
+  warning: "border-warning bg-warning-bg",
+  quiet: "border-border-subtle bg-surface-2"
+};

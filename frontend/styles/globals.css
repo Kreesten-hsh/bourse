@@ -46,7 +46,7 @@
   --score-low: #b3b8d0;
 
   /* === TYPOGRAPHIE === */
-  --font-sans: var(--font-geist-sans), 'Geist', 'Inter', system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), 'Geist Mono', 'JetBrains Mono', monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
@@ -93,15 +93,19 @@
 html {
   min-height: 100%;
   background: var(--surface);
+  scroll-behavior: smooth;
 }
 
 body {
   min-height: 100dvh;
   margin: 0;
-  background: var(--surface);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.78), transparent 28rem),
+    linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 36%, var(--surface) 100%);
   color: var(--ink);
   font-family: var(--font-sans);
   text-rendering: geometricPrecision;
+  font-size: var(--text-base);
 }
 
 button,
@@ -126,20 +130,37 @@ a {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   min-height: 100dvh;
 }
 
 .app-main {
   min-width: 0;
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .panel {
   background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+}
+
+.premium-surface {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(232, 200, 202, 0.72);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 46px rgba(52, 71, 170, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.fine-focus {
+  outline: none;
+}
+
+.fine-focus:focus-visible {
+  border-color: var(--royal);
+  box-shadow: var(--shadow-focus);
 }
 
 .surface-band {
@@ -174,7 +195,7 @@ a {
   }
 
   .app-main {
-    padding: var(--space-3);
+    padding: var(--space-4) var(--space-3) var(--space-6);
   }
 }
 
