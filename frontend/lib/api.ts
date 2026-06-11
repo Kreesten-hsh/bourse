@@ -1,6 +1,7 @@
 import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const DEFAULT_REQUEST_TIMEOUT_MS = 4_000;
 
 export type OpportunityListFilters = Readonly<{
   status?: OpportunityStatus;
@@ -110,13 +111,20 @@ export function createApiClient(fetcher: typeof fetch = fetch): ApiClient {
 }
 
 async function requestJson<T>(url: string, fetcher: typeof fetch, init?: RequestInit): Promise<T> {
-  const response = await fetcher(url, init);
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+  try {
+    const response = await fetcher(url, { ...init, signal: init?.signal ?? controller.signal });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
-
-  return (await response.json()) as T;
 }
 
 function buildUrl(path: string, filters?: OpportunityListFilters): string {

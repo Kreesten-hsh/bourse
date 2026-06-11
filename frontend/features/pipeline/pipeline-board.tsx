@@ -8,7 +8,6 @@ import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
 import { OpportunityDetailDrawer } from "@/features/opportunities/opportunity-detail-drawer";
 import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
 import { formatDeadlineLabel, formatDestination } from "@/features/opportunities/opportunity-view-model";
-import { updateOpportunityStatus } from "@/features/opportunities/opportunity-collection";
 
 type JourneyStage = Readonly<{
   status: OpportunityStatus;
@@ -92,8 +91,16 @@ export function PipelineBoard() {
     }
   }, [opportunities, selectedOpportunity]);
 
-  function handleStatusChange(opportunityId: string, status: OpportunityStatus): void {
-    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, opportunityId, status));
+  function handleToggleSaved(opportunityId: string): void {
+    setOpportunities((currentOpportunities) =>
+      currentOpportunities.map((opportunity) => {
+        if (opportunity.id !== opportunityId) {
+          return opportunity;
+        }
+
+        return { ...opportunity, isSaved: !opportunity.isSaved };
+      })
+    );
   }
 
   return (
@@ -126,7 +133,7 @@ export function PipelineBoard() {
         opportunity={selectedOpportunity}
         isOpen={drawerOpen}
         onClose={closeDrawer}
-        onStatusChange={handleStatusChange}
+        onToggleSaved={handleToggleSaved}
       />
     </main>
   );

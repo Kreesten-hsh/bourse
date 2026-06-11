@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { MaterialIcon } from "@/components/ui/material-icon";
-import { buildBenefits, buildConditions, formatDestination, formatFundingSummary } from "@/features/opportunities/opportunity-view-model";
-import { buildScoreLines, formatScoreLine } from "@/features/opportunities/scoring-view-model";
+import { buildBenefits, buildConditions } from "@/features/opportunities/opportunity-view-model";
 import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
 
 type OpportunityDetailPageProps = Readonly<{
@@ -19,7 +18,6 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
 
   const benefits = buildBenefits(opportunity);
   const conditions = buildConditions(opportunity);
-  const scoreLines = buildScoreLines(opportunity);
 
   return (
     <main className="mx-auto grid w-full max-w-container-max gap-8 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
@@ -27,9 +25,6 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
         <div>
           <p className="text-label-sm uppercase tracking-[0.16em] text-secondary">{opportunity.organization}</p>
           <h1 className="mt-3 max-w-4xl font-display text-headline-lg-mobile text-primary md:text-display-lg">{opportunity.title}</h1>
-          <p className="mt-4 text-body-lg text-on-surface-variant">
-            {formatDestination(opportunity)} · {formatFundingSummary(opportunity)}
-          </p>
         </div>
 
         <a
@@ -66,12 +61,6 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
             </div>
           ))}
         </DetailPanel>
-
-        <DetailPanel icon="psychology_alt" title={`Score expliqué : ${opportunity.score}/100`}>
-          {scoreLines.map((line) => (
-            <Line key={line.key} label={line.label} value={formatScoreLine(line)} />
-          ))}
-        </DetailPanel>
       </section>
     </main>
   );
@@ -91,7 +80,7 @@ function DetailPanel({ icon, title, children }: Readonly<{ icon: string; title: 
 
 function Line({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <div className="flex justify-between gap-4 border-t border-outline-variant pt-3 text-body-sm first:border-t-0 first:pt-0">
+    <div className="flex justify-between gap-4 border-t border-outline-variant pt-3 text-body-md first:border-t-0 first:pt-0">
       <span className="text-on-surface-variant">{label}</span>
       <span className="text-right font-semibold text-primary">{value}</span>
     </div>

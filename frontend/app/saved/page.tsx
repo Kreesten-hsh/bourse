@@ -6,8 +6,7 @@ import { MaterialIcon } from "@/components/ui/material-icon";
 import { OpportunityCard } from "@/features/opportunities/opportunity-card";
 import { OpportunityDetailDrawer } from "@/features/opportunities/opportunity-detail-drawer";
 import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
-import { updateOpportunityStatus } from "@/features/opportunities/opportunity-collection";
-import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
+import type { Opportunity } from "@/types/opportunity";
 
 const closeDelayMs = 300;
 
@@ -60,10 +59,6 @@ export default function SavedPage() {
     }
   }, [opportunities, selectedOpportunity]);
 
-  function handleStatusChange(opportunityId: string, status: OpportunityStatus): void {
-    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, opportunityId, status));
-  }
-
   function handleToggleSaved(opportunityId: string): void {
     setOpportunities((currentOpportunities) =>
       currentOpportunities.map((opportunity) => {
@@ -114,7 +109,7 @@ export default function SavedPage() {
         opportunity={selectedOpportunity}
         isOpen={drawerOpen}
         onClose={closeDrawer}
-        onStatusChange={handleStatusChange}
+        onToggleSaved={handleToggleSaved}
       />
     </main>
   );

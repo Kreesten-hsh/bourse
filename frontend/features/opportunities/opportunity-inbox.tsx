@@ -6,13 +6,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
+import type { Opportunity } from "@/types/opportunity";
 import {
   applyOpportunityQuery,
   type OpportunityFilter,
-  type OpportunitySort,
-  sortOpportunities,
-  updateOpportunityStatus
+  sortOpportunities
 } from "./opportunity-collection";
 import { OpportunityCard } from "./opportunity-card";
 import { OpportunityDetailDrawer } from "./opportunity-detail-drawer";
@@ -34,13 +32,6 @@ const filterOptions: ReadonlyArray<FilterOption> = [
   { id: "archived", label: "Archivées" }
 ];
 
-const sortLabels: Record<OpportunitySort, string> = {
-  score: "Score",
-  deadline: "Échéance",
-  funding: "Financement",
-  recent: "Récent"
-};
-
 export function OpportunityInbox() {
   const queryClient = useQueryClient();
   const closeTimerRef = useRef<number | null>(null);
@@ -49,8 +40,6 @@ export function OpportunityInbox() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<ReadonlyArray<OpportunityFilter>>([]);
-  const [sortMode, setSortMode] = useState<OpportunitySort>("score");
-  const [eligibleOnly, setEligibleOnly] = useState(false);
 
   const opportunitiesQuery = useQuery({
     queryKey: ["opportunities"],
@@ -77,12 +66,13 @@ export function OpportunityInbox() {
 
   const visibleOpportunities = useMemo(() => {
     const queried = applyOpportunityQuery(opportunities, { searchTerm, activeFilters });
-    const eligible = eligibleOnly ? queried.filter((opportunity) => opportunity.score >= 60 && opportunity.status !== "archived") : queried;
 
-    return sortOpportunities(eligible, sortMode);
-  }, [activeFilters, eligibleOnly, opportunities, searchTerm, sortMode]);
+    return sortOpportunities(queried, "recent");
+  }, [activeFilters, opportunities, searchTerm]);
 
   const featuredId = visibleOpportunities[0]?.score >= 80 ? visibleOpportunities[0].id : null;
+  const activeOpportunityCount = opportunities.filter((opportunity) => opportunity.status !== "archived").length;
+  const fundedOpportunityCount = opportunities.filter((opportunity) => opportunity.funding_type === "full" || opportunity.monthly_stipend !== null).length;
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current === null) {
@@ -135,10 +125,6 @@ export function OpportunityInbox() {
     });
   }
 
-  function handleStatusChange(opportunityId: string, status: OpportunityStatus): void {
-    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, opportunityId, status));
-  }
-
   function handleToggleSaved(opportunityId: string): void {
     setOpportunities((currentOpportunities) =>
       currentOpportunities.map((opportunity) => {
@@ -156,86 +142,56 @@ export function OpportunityInbox() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-container-max flex-col gap-12 px-margin-mobile py-10 md:px-margin-desktop md:py-16">
-      <section className="relative overflow-hidden">
-        <div>
-          <p className="text-label-sm uppercase tracking-[0.18em] text-secondary">Centre de veille mobilité</p>
-          <h1 className="mt-4 max-w-4xl font-display text-headline-lg-mobile text-primary md:text-display-lg">
-            Repérer les portes qui peuvent changer une trajectoire.
-          </h1>
-          <p className="mt-5 max-w-2xl text-body-lg text-on-surface-variant">
-            Bourses, stages, programmes et formations financées, filtrés pour ton profil tech depuis Cotonou.
-          </p>
-
-          <label className="mt-8 block max-w-3xl">
-            <span className="sr-only">Rechercher une opportunité</span>
-            <div className="flex items-center gap-3 rounded border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-card transition-colors focus-within:border-primary">
-              <MaterialIcon name="search" className="text-secondary" size={22} />
-              <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-full border-0 bg-transparent text-body-lg text-on-surface outline-none placeholder:text-secondary focus:ring-0"
-                placeholder="Rechercher une bourse, un pays, une organisation..."
-                type="search"
-              />
-            </div>
-          </label>
-
-          <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.map((filter) => {
-                const active = activeFilters.includes(filter.id);
-
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => toggleFilter(filter.id)}
-                    className={cn(
-                      "rounded-full border px-4 py-2 text-label-md transition-colors focus:outline-none focus-visible:shadow-focus",
-                      active
-                        ? "border-primary-container bg-primary-container text-on-primary"
-                        : "border-outline-variant bg-chip-bg text-on-surface-variant hover:bg-surface-container"
-                    )}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-label-md text-on-surface-variant">
-                <span className="text-secondary">Trier</span>
-                <select
-                  value={sortMode}
-                  onChange={(event) => setSortMode(event.target.value as OpportunitySort)}
-                  className="rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 text-label-md text-primary focus:border-primary focus:outline-none"
-                  aria-label="Trier les opportunités"
-                >
-                  {Object.entries(sortLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  checked={eligibleOnly}
-                  onChange={(event) => setEligibleOnly(event.target.checked)}
-                  className="sr-only"
-                  type="checkbox"
-                />
-                <span className={cn("relative block h-6 w-10 rounded-full transition-colors", eligibleOnly ? "bg-primary-container" : "bg-surface-container-highest")}>
-                  <span className={cn("absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform", eligibleOnly && "translate-x-4")} />
-                </span>
-                <span className="text-label-md text-on-surface-variant">Éligibles uniquement</span>
-              </label>
-            </div>
+    <main className="mx-auto flex w-full max-w-container-max flex-col gap-12 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
+      <section className="mx-auto flex max-w-3xl flex-col items-center text-center">
+        <p className="text-label-sm uppercase tracking-[0.18em] text-secondary">Centre de veille mobilité</p>
+        <h1 className="mt-5 font-display text-headline-lg-mobile text-primary md:text-display-lg">Découverte</h1>
+        <p className="mt-5 text-body-lg text-on-surface-variant">
+          Trouve les opportunités financées qui peuvent ouvrir ton avenir international.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-label-md text-secondary">
+          <span>{activeOpportunityCount} opportunités actives</span>
+          <span className="h-1 w-1 rounded-full bg-secondary" />
+          <span>{fundedOpportunityCount} financements détectés</span>
         </div>
+      </section>
+
+      <section className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-[760px] items-center justify-between gap-4 md:min-w-0">
+          <div className="flex shrink-0 items-center gap-1.5">
+            {filterOptions.map((filter) => {
+              const active = activeFilters.includes(filter.id);
+
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleFilter(filter.id)}
+                  className={cn(
+                    "h-8 rounded-full border px-3 text-xs font-semibold leading-none tracking-[0.03em] transition-colors focus:outline-none focus-visible:shadow-focus",
+                    active
+                      ? "border-primary-container bg-primary-container text-on-primary"
+                      : "border-outline-variant bg-chip-bg text-on-surface-variant hover:bg-surface-container"
+                  )}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="relative ml-auto block w-72 shrink-0 md:w-80">
+            <span className="sr-only">Rechercher une opportunité</span>
+            <MaterialIcon name="search" className="absolute left-0 top-1/2 -translate-y-1/2 text-secondary" size={20} />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="h-8 w-full border-0 border-b border-outline-variant bg-transparent pl-6 pr-1 text-xs font-semibold leading-none text-on-surface outline-none transition-colors placeholder:text-secondary focus:border-primary focus:ring-0"
+              placeholder="Rechercher..."
+              type="search"
+            />
+          </label>
         </div>
       </section>
 
@@ -265,8 +221,13 @@ export function OpportunityInbox() {
         opportunity={selectedOpportunity}
         isOpen={drawerOpen}
         onClose={closeDrawer}
-        onStatusChange={handleStatusChange}
+        onToggleSaved={handleToggleSaved}
       />
+
+      <footer className="border-t border-outline-variant pt-10 text-label-md text-secondary md:flex md:items-center md:justify-between">
+        <p className="font-display text-headline-md text-primary">to the world</p>
+        <p className="mt-3 md:mt-0">Veille privée pour bourses, stages et programmes financés.</p>
+      </footer>
     </main>
   );
 }
@@ -297,10 +258,10 @@ function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): Read
 function EmptyOpportunityState({ onSync }: Readonly<{ onSync: () => void }>) {
   return (
     <section className="flex min-h-[420px] flex-col items-center justify-center rounded border border-outline-variant bg-surface-container-lowest p-12 text-center">
-      <MaterialIcon name="explore" className="text-on-surface-variant" size={64} />
-      <h2 className="mt-4 font-display text-headline-md text-primary">Aucune opportunité ici</h2>
+      <MaterialIcon name="book" className="text-outline-variant" size={64} />
+      <h2 className="mt-4 font-display text-headline-md text-primary">Aucune opportunité trouvée</h2>
       <p className="mt-3 max-w-md text-body-md text-on-surface-variant">
-        Essaie d'autres filtres ou lance une synchronisation.
+        Essaie d'élargir la recherche ou de relancer les sources enregistrées.
       </p>
       <button type="button" onClick={onSync} className="editorial-button-primary mt-6 px-6 py-3 text-label-md">
         Synchroniser les sources
@@ -311,15 +272,16 @@ function EmptyOpportunityState({ onSync }: Readonly<{ onSync: () => void }>) {
 
 function OpportunityLoadingSkeleton() {
   return (
-    <main className="mx-auto grid w-full max-w-container-max gap-8 px-margin-mobile py-12 md:px-margin-desktop">
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4">
-        <div className="skeleton h-12 w-52 rounded" />
+    <main className="mx-auto grid w-full max-w-container-max gap-12 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5">
+        <div className="skeleton h-4 w-48 rounded-full" />
+        <div className="skeleton h-12 w-56 rounded" />
         <div className="skeleton h-5 w-full max-w-xl rounded" />
         <div className="skeleton h-5 w-64 rounded" />
       </div>
       <div className="grid grid-cols-1 gap-gutter md:grid-cols-12">
-        <div className="skeleton h-[360px] rounded md:col-span-8" />
-        <div className="skeleton h-[360px] rounded md:col-span-4" />
+        <div className="skeleton h-[300px] rounded md:col-span-8" />
+        <div className="skeleton h-[300px] rounded md:col-span-4" />
         <div className="skeleton h-[240px] rounded md:col-span-4" />
         <div className="skeleton h-[240px] rounded md:col-span-4" />
         <div className="skeleton h-[240px] rounded md:col-span-4" />

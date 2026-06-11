@@ -54,8 +54,8 @@ const config: Config = {
         mono: ["var(--font-mono)"]
       },
       fontSize: {
-        "display-lg": ["48px", { fontWeight: "700", letterSpacing: "-0.02em", lineHeight: "56px" }],
-        "headline-lg": ["32px", { fontWeight: "600", letterSpacing: "-0.01em", lineHeight: "40px" }],
+        "display-lg": ["48px", { fontWeight: "700", letterSpacing: "0", lineHeight: "56px" }],
+        "headline-lg": ["32px", { fontWeight: "600", letterSpacing: "0", lineHeight: "40px" }],
         "headline-lg-mobile": ["28px", { fontWeight: "600", lineHeight: "36px" }],
         "headline-md": ["24px", { fontWeight: "600", lineHeight: "32px" }],
         "body-lg": ["18px", { fontWeight: "400", lineHeight: "28px" }],

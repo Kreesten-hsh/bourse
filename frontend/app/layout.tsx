@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 
 import { AppNav } from "@/components/nav/app-nav";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -10,22 +9,6 @@ export const metadata: Metadata = {
   description: "Private mobility command center for funded international opportunities."
 };
 
-const geistSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist-sans"
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono"
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["600", "700"]
-});
-
 type RootLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
@@ -33,13 +16,7 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="fr">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable}`}>
+      <body>
         <AppProviders>
           <a
             href="#main-content"

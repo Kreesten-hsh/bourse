@@ -47,6 +47,7 @@ export function OpportunityCard({
       aria-label={`Ouvrir ${opportunity.title}`}
       className={cn(
         "editorial-card group flex min-h-[260px] cursor-pointer flex-col justify-between p-5 md:p-6",
+        isFeatured && "md:min-h-[274px] md:p-8",
         isSelected && "editorial-card-selected",
         expired && "opacity-60 hover:translate-y-0 hover:shadow-card",
         className
@@ -78,7 +79,7 @@ export function OpportunityCard({
         </div>
 
         <div>
-          <h2 className={cn("font-display text-headline-md text-primary line-clamp-2", isFeatured && "md:text-headline-lg")}>
+          <h2 className={cn("line-clamp-2 font-display text-headline-md text-primary", isFeatured && "md:text-headline-lg")}>
             {opportunity.title}
           </h2>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-body-md text-on-surface-variant">
@@ -108,7 +109,7 @@ export function OpportunityCard({
             {formatFundingSummary(opportunity)}
           </span>
         </div>
-        <span className="mt-5 inline-flex items-center gap-1 rounded-full bg-surface-container px-3 py-1.5 text-label-md text-primary transition-colors group-hover:bg-surface-container-high">
+        <span className="mt-5 inline-flex items-center gap-1 text-label-md font-semibold text-primary transition-transform group-hover:translate-x-1">
           Voir les détails
           <MaterialIcon name="arrow_forward" size={16} />
         </span>

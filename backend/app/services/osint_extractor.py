@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urljoin
 
-import feedparser
 from bs4 import BeautifulSoup
 
 from app.schemas.opportunity import FundingType, OpportunityCreate, OpportunityRequiredLevel, OpportunityType
@@ -81,6 +80,8 @@ class GenericOpportunityExtractor:
         )
 
     def _extract_rss(self, source: SourceRead, content: str, fetched_url: str) -> tuple[ExtractedOpportunityDraft, ...]:
+        import feedparser
+
         feed = feedparser.parse(content)
         drafts: list[ExtractedOpportunityDraft] = []
 
