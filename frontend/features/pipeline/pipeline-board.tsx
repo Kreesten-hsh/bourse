@@ -1,104 +1,171 @@
-import { ArrowRight, CalendarBlank, CheckCircle, Compass } from "@phosphor-icons/react/dist/ssr";
+"use client";
 
-import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
-import { formatDeadlineLabel } from "@/features/opportunities/opportunity-view-model";
-import { getScoreBand, scoreBandClassName, statusLabel } from "@/features/opportunities/opportunity-style";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { cn } from "@/lib/cn";
 import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
+import { OpportunityDetailDrawer } from "@/features/opportunities/opportunity-detail-drawer";
+import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
+import { formatDeadlineLabel, formatDestination } from "@/features/opportunities/opportunity-view-model";
+import { updateOpportunityStatus } from "@/features/opportunities/opportunity-collection";
 
-const journeyStages: ReadonlyArray<Readonly<{ status: OpportunityStatus; title: string; intent: string }>> = [
-  { status: "new", title: "Nouveau", intent: "Signaux à qualifier rapidement." },
-  { status: "analyzing", title: "À analyser", intent: "Vérifier conditions, financement et risques." },
-  { status: "priority", title: "Prioritaire", intent: "Candidatures qui méritent une action." },
-  { status: "applying", title: "Dossier en cours", intent: "Documents et angle de candidature." },
-  { status: "applied", title: "Postulé", intent: "Suivi après soumission." },
-  { status: "result", title: "Résultat", intent: "Décision, retour ou prochaine action." }
+type JourneyStage = Readonly<{
+  status: OpportunityStatus;
+  title: string;
+  promise: string;
+  icon: string;
+}>;
+
+type GroupedStage = JourneyStage &
+  Readonly<{
+    opportunities: ReadonlyArray<Opportunity>;
+  }>;
+
+const closeDelayMs = 300;
+
+const journeyStages: ReadonlyArray<JourneyStage> = [
+  { status: "new", title: "Nouvelles", promise: "Signaux à qualifier avant qu'ils ne deviennent urgents.", icon: "travel_explore" },
+  { status: "analyzing", title: "À analyser", promise: "Conditions, financement et risques à clarifier.", icon: "manage_search" },
+  { status: "priority", title: "Prioritaires", promise: "Les candidatures qui méritent une vraie action.", icon: "stars" },
+  { status: "applying", title: "Dossier en cours", promise: "Documents, angle narratif et preuves à assembler.", icon: "edit_document" },
+  { status: "applied", title: "Postulées", promise: "Soumissions à suivre sans perdre le fil.", icon: "outgoing_mail" },
+  { status: "result", title: "Résultat", promise: "Décisions, relances et prochaines bifurcations.", icon: "task_alt" }
 ];
 
 export function PipelineBoard() {
-  const groupedOpportunities = journeyStages.map((stage) => ({
-    ...stage,
-    opportunities: sampleOpportunities.filter((opportunity) => opportunity.status === stage.status)
-  }));
+  const closeTimerRef = useRef<number | null>(null);
+  const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>(sampleOpportunities);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const groupedStages = useMemo(
+    () =>
+      journeyStages.map((stage) => ({
+        ...stage,
+        opportunities: opportunities.filter((opportunity) => opportunity.status === stage.status)
+      })),
+    [opportunities]
+  );
+
+  const priorityCount = opportunities.filter((opportunity) => opportunity.status === "priority").length;
+  const inProgressCount = opportunities.filter((opportunity) => opportunity.status === "applying").length;
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    clearCloseTimer();
+    setDrawerOpen(false);
+    closeTimerRef.current = window.setTimeout(() => {
+      setSelectedOpportunity(null);
+      closeTimerRef.current = null;
+    }, closeDelayMs);
+  }, [clearCloseTimer]);
+
+  const openDrawer = useCallback(
+    (opportunity: Opportunity) => {
+      clearCloseTimer();
+      setSelectedOpportunity(opportunity);
+      window.requestAnimationFrame(() => setDrawerOpen(true));
+    },
+    [clearCloseTimer]
+  );
+
+  useEffect(() => clearCloseTimer, [clearCloseTimer]);
+
+  useEffect(() => {
+    if (selectedOpportunity === null) {
+      return;
+    }
+
+    const nextSelected = opportunities.find((opportunity) => opportunity.id === selectedOpportunity.id);
+
+    if (nextSelected !== undefined && nextSelected !== selectedOpportunity) {
+      setSelectedOpportunity(nextSelected);
+    }
+  }, [opportunities, selectedOpportunity]);
+
+  function handleStatusChange(opportunityId: string, status: OpportunityStatus): void {
+    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, opportunityId, status));
+  }
 
   return (
-    <section className="mx-auto grid max-w-[1320px] gap-6">
-      <header className="grid gap-4 rounded-lg px-1 md:grid-cols-[minmax(0,1fr)_320px] md:items-end">
+    <main className="mx-auto flex w-full max-w-container-max flex-col gap-10 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
+      <header className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
         <div>
-          <p className="inline-flex items-center gap-2 text-sm font-semibold text-royal">
-            <Compass size={18} weight="duotone" />
-            Application journey
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold leading-tight text-ink">Votre trajectoire de candidature</h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-ink-60">
-            Une vue calme pour suivre les opportunités depuis le premier signal jusqu'au résultat, sans bruit analytique.
+          <p className="text-label-sm uppercase tracking-[0.16em] text-secondary">Parcours de candidature</p>
+          <h1 className="mt-3 font-display text-headline-lg-mobile text-primary md:text-display-lg">Suivi des candidatures</h1>
+          <p className="mt-4 max-w-2xl text-body-lg text-on-surface-variant">
+            Une trajectoire claire pour passer d'une opportunité repérée à une candidature envoyée, sans transformer ton avenir en tableau de bord.
           </p>
         </div>
 
-        <div className="rounded-md border border-royal-mid bg-royal-light px-4 py-3">
-          <p className="text-sm font-medium text-ink-60">Prochaine action</p>
-          <p className="mt-1 text-lg font-semibold text-ink">Traiter les priorités avant les nouvelles offres.</p>
-        </div>
+        <aside className="editorial-card p-5">
+          <p className="text-label-sm uppercase tracking-[0.14em] text-secondary">Aujourd'hui</p>
+          <p className="mt-3 font-display text-headline-md text-primary">{priorityCount} priorités</p>
+          <p className="mt-2 text-body-md text-on-surface-variant">
+            {inProgressCount} dossier{inProgressCount > 1 ? "s" : ""} en cours. Traite d'abord les échéances proches, puis affine l'angle de candidature.
+          </p>
+        </aside>
       </header>
 
-      <div className="grid gap-4">
-        {groupedOpportunities.map((stage, index) => (
-          <JourneyStage
-            key={stage.status}
-            index={index}
-            title={stage.title}
-            intent={stage.intent}
-            status={stage.status}
-            opportunities={stage.opportunities}
-          />
+      <section className="grid gap-4">
+        {groupedStages.map((stage, index) => (
+          <JourneyStageRow key={stage.status} stage={stage} index={index} onOpen={openDrawer} />
         ))}
-      </div>
-    </section>
+      </section>
+
+      <OpportunityDetailDrawer
+        opportunity={selectedOpportunity}
+        isOpen={drawerOpen}
+        onClose={closeDrawer}
+        onStatusChange={handleStatusChange}
+      />
+    </main>
   );
 }
 
-function JourneyStage({
+function JourneyStageRow({
+  stage,
   index,
-  title,
-  intent,
-  status,
-  opportunities
+  onOpen
 }: Readonly<{
+  stage: GroupedStage;
   index: number;
-  title: string;
-  intent: string;
-  status: OpportunityStatus;
-  opportunities: ReadonlyArray<Opportunity>;
+  onOpen: (opportunity: Opportunity) => void;
 }>) {
   return (
-    <section className="grid gap-3 rounded-lg border border-border-subtle bg-surface-2 px-4 py-4 shadow-sm md:grid-cols-[220px_minmax(0,1fr)] md:gap-5">
-      <div className="flex gap-3">
-        <div className="flex flex-col items-center">
-          <span className="mono grid h-8 w-8 place-items-center rounded-full bg-royal text-xs font-semibold text-surface-2">
-            {index + 1}
-          </span>
-          <span className="mt-2 hidden h-full w-px bg-border-subtle md:block" aria-hidden="true" />
-        </div>
+    <section className="grid gap-4 border-t border-outline-variant pt-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
+      <header className="flex gap-4">
+        <span className="mono grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-label-sm text-on-primary">
+          {index + 1}
+        </span>
         <div>
-          <h2 className="text-base font-semibold text-ink">
-            {title} <span className="text-ink-60">({opportunities.length})</span>
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-ink-60">{intent}</p>
-          <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-royal">
-            <CheckCircle size={14} weight="duotone" />
-            {statusLabel[status]}
-          </p>
+          <div className="flex items-center gap-2">
+            <MaterialIcon name={stage.icon} className="text-primary" size={18} />
+            <h2 className="font-display text-headline-sm text-primary">
+              {stage.title} <span className="text-secondary">({stage.opportunities.length})</span>
+            </h2>
+          </div>
+          <p className="mt-2 text-body-sm text-on-surface-variant">{stage.promise}</p>
         </div>
-      </div>
+      </header>
 
-      {opportunities.length > 0 ? (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {opportunities.map((opportunity) => (
-            <PipelineCard key={opportunity.id} opportunity={opportunity} />
+      {stage.opportunities.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {stage.opportunities.map((opportunity) => (
+            <PipelineCard key={opportunity.id} opportunity={opportunity} onOpen={onOpen} />
           ))}
         </div>
       ) : (
-        <div className="rounded-md border border-border-subtle bg-surface-3 px-4 py-5 text-sm text-ink-60">
+        <div className="flex min-h-[120px] items-center rounded border border-dashed border-outline-variant bg-surface-container-lowest px-5 py-4 text-body-sm text-secondary">
           Aucune opportunité dans cette étape.
         </div>
       )}
@@ -106,33 +173,70 @@ function JourneyStage({
   );
 }
 
-function PipelineCard({ opportunity }: Readonly<{ opportunity: Opportunity }>) {
+function PipelineCard({
+  opportunity,
+  onOpen
+}: Readonly<{
+  opportunity: Opportunity;
+  onOpen: (opportunity: Opportunity) => void;
+}>) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    onOpen(opportunity);
+  }
+
   return (
-    <article className="group rounded-md border border-border-subtle bg-surface-2 px-4 py-3 transition duration-150 hover:-translate-y-0.5 hover:border-royal-mid hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
+    <article
+      aria-label={`Ouvrir ${opportunity.title}`}
+      className="editorial-card min-h-[180px] cursor-pointer p-4"
+      onClick={() => onOpen(opportunity)}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold leading-5 text-ink">{opportunity.title}</h3>
-          <p className="mt-1 text-xs text-ink-60">{opportunity.organization}</p>
+          <p className="text-label-sm text-secondary">{opportunity.organization}</p>
+          <h3 className="mt-1 line-clamp-2 font-display text-headline-sm text-primary">{opportunity.title}</h3>
         </div>
-        <span
-          className={cn(
-            "mono grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold",
-            scoreBandClassName[getScoreBand(opportunity.score)]
-          )}
-        >
+        <span className={cn("mono grid h-10 w-10 shrink-0 place-items-center rounded-full text-label-sm font-semibold", scoreToneClassName(opportunity.score))}>
           {opportunity.score}
         </span>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-60">
-        <span className="inline-flex items-center gap-1 font-medium">
-          <CalendarBlank size={14} className="text-royal" />
-          {formatDeadlineLabel(opportunity)}
-        </span>
-        <span className="inline-flex items-center gap-1 font-semibold text-royal opacity-0 transition-opacity group-hover:opacity-100">
-          Ouvrir
-          <ArrowRight size={14} />
-        </span>
-      </div>
+
+      <dl className="mt-5 grid gap-2 text-label-sm text-on-surface-variant">
+        <div className="flex items-center gap-2">
+          <MaterialIcon name="event" size={14} />
+          <dt className="sr-only">Échéance</dt>
+          <dd>{formatDeadlineLabel(opportunity)}</dd>
+        </div>
+        <div className="flex items-center gap-2">
+          <MaterialIcon name="public" size={14} />
+          <dt className="sr-only">Destination</dt>
+          <dd>{formatDestination(opportunity)}</dd>
+        </div>
+      </dl>
+
+      <span className="mt-5 inline-flex items-center gap-1 text-label-md text-primary">
+        Ouvrir le dossier
+        <MaterialIcon name="arrow_forward" size={15} />
+      </span>
     </article>
   );
+}
+
+function scoreToneClassName(score: number): string {
+  if (score >= 80) {
+    return "bg-success-container text-success";
+  }
+
+  if (score >= 60) {
+    return "bg-warning-container text-warning";
+  }
+
+  return "bg-surface-container-highest text-secondary";
 }

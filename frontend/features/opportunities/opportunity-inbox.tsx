@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowsClockwise, CloudWarning, Compass, Funnel, MagnifyingGlass } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "motion/react";
 
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { api } from "@/lib/api";
-import { buttonTap } from "@/lib/motion";
 import { cn } from "@/lib/cn";
 import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
 import {
@@ -16,9 +14,8 @@ import {
   sortOpportunities,
   updateOpportunityStatus
 } from "./opportunity-collection";
-import { getDaysUntilDeadline } from "./opportunity-view-model";
-import { OpportunityInspector } from "./opportunity-inspector";
-import { OpportunityTable } from "./opportunity-table";
+import { OpportunityCard } from "./opportunity-card";
+import { OpportunityDetailDrawer } from "./opportunity-detail-drawer";
 import { sampleOpportunities } from "./sample-opportunities";
 
 type FilterOption = Readonly<{
@@ -26,27 +23,20 @@ type FilterOption = Readonly<{
   label: string;
 }>;
 
-type HeroMetric = Readonly<{
-  label: string;
-  value: string;
-  detail: string;
-  tone: "blue" | "amber" | "slate";
-}>;
-
-const closeAnimationDurationMs = 300;
+const closeDelayMs = 300;
 
 const filterOptions: ReadonlyArray<FilterOption> = [
   { id: "funded", label: "Financées" },
   { id: "tech", label: "Tech / Cyber" },
   { id: "africa_global", label: "Afrique & Global" },
-  { id: "urgent", label: "Urgent (< 14j)" },
+  { id: "urgent", label: "Urgent" },
   { id: "needs_review", label: "À vérifier" },
   { id: "archived", label: "Archivées" }
 ];
 
 const sortLabels: Record<OpportunitySort, string> = {
   score: "Score",
-  deadline: "Deadline",
+  deadline: "Échéance",
   funding: "Financement",
   recent: "Récent"
 };
@@ -55,12 +45,12 @@ export function OpportunityInbox() {
   const queryClient = useQueryClient();
   const closeTimerRef = useRef<number | null>(null);
   const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>([]);
-  const [selectedAd, setSelectedAd] = useState<Opportunity | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<ReadonlyArray<OpportunityFilter>>([]);
   const [sortMode, setSortMode] = useState<OpportunitySort>("score");
-  const [lastSyncLabel, setLastSyncLabel] = useState("09 juin 2026, 06:00");
+  const [eligibleOnly, setEligibleOnly] = useState(false);
 
   const opportunitiesQuery = useQuery({
     queryKey: ["opportunities"],
@@ -69,15 +59,15 @@ export function OpportunityInbox() {
 
   const syncMutation = useMutation({
     mutationFn: () => api.sync.trigger(),
-    onSuccess: (result) => {
-      setLastSyncLabel(new Date(result.synced_at).toLocaleString("fr-FR"));
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     }
   });
 
   useEffect(() => {
     if (opportunitiesQuery.isSuccess) {
-      setOpportunities(opportunitiesQuery.data.length > 0 ? opportunitiesQuery.data : sampleOpportunities);
+      const nextOpportunities = opportunitiesQuery.data.length > 0 ? opportunitiesQuery.data : sampleOpportunities;
+      setOpportunities(normalizeOpportunities(nextOpportunities));
     }
 
     if (opportunitiesQuery.isError) {
@@ -86,15 +76,14 @@ export function OpportunityInbox() {
   }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess]);
 
   const visibleOpportunities = useMemo(() => {
-    const queried = applyOpportunityQuery(opportunities, {
-      searchTerm,
-      activeFilters
-    });
+    const queried = applyOpportunityQuery(opportunities, { searchTerm, activeFilters });
+    const eligible = eligibleOnly ? queried.filter((opportunity) => opportunity.score >= 60 && opportunity.status !== "archived") : queried;
 
-    return sortOpportunities(queried, sortMode);
-  }, [activeFilters, opportunities, searchTerm, sortMode]);
+    return sortOpportunities(eligible, sortMode);
+  }, [activeFilters, eligibleOnly, opportunities, searchTerm, sortMode]);
 
-  const heroMetrics = useMemo(() => buildHeroMetrics(opportunities), [opportunities]);
+  const featuredId = visibleOpportunities[0]?.score >= 80 ? visibleOpportunities[0].id : null;
+  const fundedCount = opportunities.filter((opportunity) => opportunity.funding_type === "full" || opportunity.monthly_stipend !== null).length;
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current === null) {
@@ -105,20 +94,20 @@ export function OpportunityInbox() {
     closeTimerRef.current = null;
   }, []);
 
-  const closeDetailPanel = useCallback(() => {
+  const closeDrawer = useCallback(() => {
     clearCloseTimer();
-    setIsPanelOpen(false);
+    setDrawerOpen(false);
     closeTimerRef.current = window.setTimeout(() => {
-      setSelectedAd(null);
+      setSelectedOpportunity(null);
       closeTimerRef.current = null;
-    }, closeAnimationDurationMs);
+    }, closeDelayMs);
   }, [clearCloseTimer]);
 
-  const openDetailPanel = useCallback(
+  const openDrawer = useCallback(
     (opportunity: Opportunity) => {
       clearCloseTimer();
-      setSelectedAd(opportunity);
-      window.requestAnimationFrame(() => setIsPanelOpen(true));
+      setSelectedOpportunity(opportunity);
+      window.requestAnimationFrame(() => setDrawerOpen(true));
     },
     [clearCloseTimer]
   );
@@ -126,45 +115,16 @@ export function OpportunityInbox() {
   useEffect(() => clearCloseTimer, [clearCloseTimer]);
 
   useEffect(() => {
-    if (!isPanelOpen) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeDetailPanel();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [closeDetailPanel, isPanelOpen]);
-
-  useEffect(() => {
-    document.body.style.overflow = isPanelOpen ? "hidden" : "";
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isPanelOpen]);
-
-  useEffect(() => {
-    if (selectedAd === null) {
+    if (selectedOpportunity === null) {
       return;
     }
 
-    const visibleSelectedAd = visibleOpportunities.find((opportunity) => opportunity.id === selectedAd.id);
+    const nextSelected = opportunities.find((opportunity) => opportunity.id === selectedOpportunity.id);
 
-    if (visibleSelectedAd === undefined) {
-      closeDetailPanel();
-      return;
+    if (nextSelected !== undefined && nextSelected !== selectedOpportunity) {
+      setSelectedOpportunity(nextSelected);
     }
-
-    if (visibleSelectedAd !== selectedAd) {
-      setSelectedAd(visibleSelectedAd);
-    }
-  }, [closeDetailPanel, selectedAd, visibleOpportunities]);
+  }, [opportunities, selectedOpportunity]);
 
   function toggleFilter(filter: OpportunityFilter): void {
     setActiveFilters((currentFilters) => {
@@ -176,27 +136,20 @@ export function OpportunityInbox() {
     });
   }
 
-  function handleStatusChange(status: OpportunityStatus): void {
-    if (selectedAd === null) {
-      return;
-    }
-
-    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, selectedAd.id, status));
-    setSelectedAd((currentAd) => {
-      if (currentAd === null) {
-        return null;
-      }
-
-      return {
-        ...currentAd,
-        status,
-        updated_at: new Date().toISOString()
-      };
-    });
+  function handleStatusChange(opportunityId: string, status: OpportunityStatus): void {
+    setOpportunities((currentOpportunities) => updateOpportunityStatus(currentOpportunities, opportunityId, status));
   }
 
-  function handleSync(): void {
-    syncMutation.mutate();
+  function handleToggleSaved(opportunityId: string): void {
+    setOpportunities((currentOpportunities) =>
+      currentOpportunities.map((opportunity) => {
+        if (opportunity.id !== opportunityId) {
+          return opportunity;
+        }
+
+        return { ...opportunity, isSaved: !opportunity.isSaved };
+      })
+    );
   }
 
   if (opportunitiesQuery.isLoading && opportunities.length === 0) {
@@ -204,220 +157,190 @@ export function OpportunityInbox() {
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <OpportunityHero metrics={heroMetrics} lastSyncLabel={lastSyncLabel} />
-
-      {opportunitiesQuery.isError ? <SourceErrorBanner /> : null}
-
-      <section
-        aria-labelledby="opportunity-command-title"
-        className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm md:px-5 md:py-5"
-      >
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <SearchCommand searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            <SortControl sortMode={sortMode} onSortChange={setSortMode} />
-            <motion.button
-              {...buttonTap}
-              type="button"
-              onClick={handleSync}
-              className={cn(
-                "inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500",
-                syncMutation.isPending
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-              )}
-            >
-              <ArrowsClockwise size={17} />
-              Sync
-            </motion.button>
-          </div>
+    <main className="mx-auto flex w-full max-w-container-max flex-col gap-12 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
+      <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+        <h1 className="font-display text-headline-lg-mobile text-primary md:text-display-lg">Découvrir</h1>
+        <p className="text-body-lg text-on-surface-variant">
+          Trouve les bourses, stages et formations qui peuvent vraiment ouvrir ton parcours international.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-label-md text-secondary">
+          <span>{opportunities.length} offres actives</span>
+          <span className="h-1 w-1 rounded-full bg-secondary" />
+          <span>{fundedCount} financements confirmés</span>
         </div>
+      </section>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.map((filter) => {
-              const isActive = activeFilters.includes(filter.id);
+      {opportunitiesQuery.isError ? <SourceErrorBanner onRetry={() => syncMutation.mutate()} /> : null}
 
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => toggleFilter(filter.id)}
-                  className={cn(
-                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500",
-                    isActive
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                  )}
+      <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <label className="block lg:w-[360px]">
+            <span className="text-label-sm uppercase text-secondary">Recherche</span>
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="mt-2 w-full border-0 border-b border-outline-variant bg-transparent px-0 py-2 text-body-md text-on-surface outline-none focus:border-primary focus:ring-0"
+              placeholder="Titre, organisation, pays, domaine..."
+              type="search"
+            />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              {filterOptions.map((filter) => {
+                const active = activeFilters.includes(filter.id);
+
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleFilter(filter.id)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-label-md transition-colors focus:outline-none focus-visible:shadow-focus",
+                      active
+                        ? "border-primary-container bg-primary-container text-on-primary"
+                        : "border-outline-variant bg-chip-bg text-on-surface-variant hover:bg-surface-container"
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-label-md text-on-surface-variant">
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as OpportunitySort)}
+                  className="rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 text-label-md text-primary focus:border-primary focus:outline-none"
+                  aria-label="Trier les opportunités"
                 >
-                  <Funnel size={14} />
-                  {filter.label}
-                </button>
-              );
-            })}
-          </div>
+                  {Object.entries(sortLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <p className="text-sm text-slate-500" aria-live="polite">
-            {visibleOpportunities.length} opportunité(s) lisible(s)
-          </p>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  checked={eligibleOnly}
+                  onChange={(event) => setEligibleOnly(event.target.checked)}
+                  className="sr-only"
+                  type="checkbox"
+                />
+                <span className={cn("relative block h-6 w-10 rounded-full transition-colors", eligibleOnly ? "bg-primary-container" : "bg-surface-container-highest")}>
+                  <span className={cn("absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform", eligibleOnly && "translate-x-4")} />
+                </span>
+                <span className="text-label-md text-on-surface-variant">Éligibles uniquement</span>
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="min-w-0">
-        <OpportunityTable
-          opportunities={visibleOpportunities}
-          selectedOpportunityId={isPanelOpen ? selectedAd?.id ?? null : null}
-          onSelectOpportunity={openDetailPanel}
-          onSync={handleSync}
-        />
-      </section>
+      {visibleOpportunities.length > 0 ? (
+        <section className="grid grid-cols-1 gap-gutter md:grid-cols-12">
+          {visibleOpportunities.map((opportunity, index) => {
+            const isFeatured = opportunity.id === featuredId;
 
-      <OpportunityInspector
-        opportunity={selectedAd}
-        isOpen={isPanelOpen}
-        onClose={closeDetailPanel}
+            return (
+              <OpportunityCard
+                key={opportunity.id}
+                opportunity={opportunity}
+                isFeatured={isFeatured}
+                isSelected={selectedOpportunity?.id === opportunity.id && drawerOpen}
+                className={getBentoSpan(index, visibleOpportunities.length, isFeatured)}
+                onOpen={openDrawer}
+                onToggleSaved={handleToggleSaved}
+              />
+            );
+          })}
+        </section>
+      ) : (
+        <EmptyOpportunityState onSync={() => syncMutation.mutate()} />
+      )}
+
+      <OpportunityDetailDrawer
+        opportunity={selectedOpportunity}
+        isOpen={drawerOpen}
+        onClose={closeDrawer}
         onStatusChange={handleStatusChange}
       />
-    </div>
+    </main>
   );
 }
 
-function OpportunityHero({ metrics, lastSyncLabel }: Readonly<{ metrics: ReadonlyArray<HeroMetric>; lastSyncLabel: string }>) {
-  return (
-    <header className="grid gap-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(300px,0.68fr)] md:items-end">
-      <div>
-        <p className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
-          <Compass size={18} weight="duotone" />
-          Mobility Intelligence Command Center
-        </p>
-        <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-900 md:text-[2.75rem]">
-          Good morning, Kreesten
-        </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-          Les opportunités internationales sont classées pour une lecture rapide: financement, urgence, pertinence profil.
-        </p>
-      </div>
+function getBentoSpan(index: number, total: number, isFeatured: boolean): string {
+  if (isFeatured && index === 0) {
+    return "md:col-span-8";
+  }
 
-      <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
-        {metrics.map((metric) => (
-          <div key={metric.label} className={cn("rounded-xl border px-4 py-3 shadow-sm", metricClassName[metric.tone])}>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-slate-500">{metric.label}</p>
-              <span className="mono text-lg font-semibold text-slate-900">{metric.value}</span>
-            </div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">{metric.detail}</p>
-          </div>
-        ))}
-      </div>
+  if (index === 0) {
+    return "md:col-span-12";
+  }
 
-      <p className="text-xs text-slate-500 md:col-span-2">Dernière sync: {lastSyncLabel}</p>
-    </header>
-  );
+  if (total - index < 4) {
+    return "md:col-span-6";
+  }
+
+  return "md:col-span-4";
 }
 
-function SearchCommand({ searchTerm, onSearchChange }: Readonly<{ searchTerm: string; onSearchChange: (value: string) => void }>) {
+function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<Opportunity> {
+  return opportunities.map((opportunity) => ({
+    ...opportunity,
+    isSaved: opportunity.isSaved ?? false
+  }));
+}
+
+function SourceErrorBanner({ onRetry }: Readonly<{ onRetry: () => void }>) {
   return (
-    <label className="relative block">
-      <span id="opportunity-command-title" className="sr-only">
-        Recherche opportunités
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-error-container bg-error-container px-4 py-3 text-label-md text-on-error-container">
+      <span className="inline-flex items-center gap-2">
+        <MaterialIcon name="warning" size={18} />
+        La source API locale est temporairement inaccessible.
       </span>
-      <MagnifyingGlass size={23} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-blue-600" />
-      <input
-        value={searchTerm}
-        onChange={(event) => onSearchChange(event.target.value)}
-        className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-base font-medium text-slate-900 outline-none transition-all duration-300 ease-in-out placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-        placeholder="Rechercher titre, organisation, pays, domaine..."
-        type="search"
-      />
-    </label>
-  );
-}
-
-function SortControl({
-  sortMode,
-  onSortChange
-}: Readonly<{ sortMode: OpportunitySort; onSortChange: (value: OpportunitySort) => void }>) {
-  return (
-    <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-500">
-      <span>Trier</span>
-      <select
-        value={sortMode}
-        onChange={(event) => onSortChange(event.target.value as OpportunitySort)}
-        className="bg-transparent text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
-        aria-label="Trier les opportunités"
-      >
-        {Object.entries(sortLabels).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function SourceErrorBanner() {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
-      <CloudWarning size={18} />
-      Source API locale indisponible: les offres de démonstration restent utilisables.
+      <button type="button" onClick={onRetry} className="text-primary hover:underline focus:outline-none focus-visible:shadow-focus">
+        Réessayer
+      </button>
     </div>
+  );
+}
+
+function EmptyOpportunityState({ onSync }: Readonly<{ onSync: () => void }>) {
+  return (
+    <section className="flex min-h-[420px] flex-col items-center justify-center rounded border border-outline-variant bg-surface-container-lowest p-12 text-center">
+      <MaterialIcon name="explore" className="text-on-surface-variant" size={64} />
+      <h2 className="mt-4 font-display text-headline-md text-primary">Aucune opportunité ici</h2>
+      <p className="mt-3 max-w-md text-body-md text-on-surface-variant">
+        Essaie d'autres filtres ou lance une synchronisation.
+      </p>
+      <button type="button" onClick={onSync} className="editorial-button-primary mt-6 px-6 py-3 text-label-md">
+        Synchroniser les sources
+      </button>
+    </section>
   );
 }
 
 function OpportunityLoadingSkeleton() {
   return (
-    <div className="mx-auto grid max-w-7xl gap-5">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="skeleton h-5 w-64 rounded-xl" />
-        <div className="skeleton mt-4 h-12 max-w-xl rounded-xl" />
-        <div className="skeleton mt-4 h-5 max-w-2xl rounded-xl" />
+    <main className="mx-auto grid w-full max-w-container-max gap-8 px-margin-mobile py-12 md:px-margin-desktop">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4">
+        <div className="skeleton h-12 w-52 rounded" />
+        <div className="skeleton h-5 w-full max-w-xl rounded" />
+        <div className="skeleton h-5 w-64 rounded" />
       </div>
-      <div className="grid gap-3">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="skeleton h-36 rounded-xl" />
-        ))}
+      <div className="grid grid-cols-1 gap-gutter md:grid-cols-12">
+        <div className="skeleton h-[360px] rounded md:col-span-8" />
+        <div className="skeleton h-[360px] rounded md:col-span-4" />
+        <div className="skeleton h-[240px] rounded md:col-span-4" />
+        <div className="skeleton h-[240px] rounded md:col-span-4" />
+        <div className="skeleton h-[240px] rounded md:col-span-4" />
       </div>
-    </div>
+    </main>
   );
 }
-
-function buildHeroMetrics(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<HeroMetric> {
-  const priorityCount = opportunities.filter((opportunity) => opportunity.score >= 80 && opportunity.status !== "archived").length;
-  const criticalCount = opportunities.filter((opportunity) => {
-    const daysUntilDeadline = getDaysUntilDeadline(opportunity);
-
-    return daysUntilDeadline !== null && daysUntilDeadline >= 0 && daysUntilDeadline < 14;
-  }).length;
-  const newCount = opportunities.filter((opportunity) => opportunity.status === "new").length;
-
-  return [
-    {
-      label: "Priorités fortes",
-      value: String(priorityCount),
-      detail: "Candidatures à lire avant tout le reste.",
-      tone: "blue"
-    },
-    {
-      label: "Fenêtre courte",
-      value: String(criticalCount),
-      detail: "Deadlines à moins de 14 jours.",
-      tone: "amber"
-    },
-    {
-      label: "Nouveaux signaux",
-      value: String(newCount),
-      detail: "Offres fraîches à qualifier.",
-      tone: "slate"
-    }
-  ];
-}
-
-const metricClassName: Record<HeroMetric["tone"], string> = {
-  blue: "border-blue-200 bg-blue-50",
-  amber: "border-amber-200 bg-amber-50",
-  slate: "border-slate-200 bg-slate-50"
-};

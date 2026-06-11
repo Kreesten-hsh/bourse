@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { ArrowSquareOut, CheckCircle, CurrencyCircleDollar, Flag } from "@phosphor-icons/react/dist/ssr";
 
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { buildBenefits, buildConditions, formatDestination, formatFundingSummary } from "@/features/opportunities/opportunity-view-model";
 import { buildScoreLines, formatScoreLine } from "@/features/opportunities/scoring-view-model";
 import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
@@ -22,78 +22,78 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
   const scoreLines = buildScoreLines(opportunity);
 
   return (
-    <article className="mx-auto grid max-w-5xl gap-4">
-      <header className="panel p-6">
-        <p className="text-sm font-semibold text-royal">{opportunity.organization}</p>
-        <h1 className="mt-2 text-3xl font-semibold text-ink">{opportunity.title}</h1>
-        <p className="mt-3 text-sm text-ink-60">{formatDestination(opportunity)} · {formatFundingSummary(opportunity)}</p>
+    <main className="mx-auto grid w-full max-w-container-max gap-8 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
+      <header className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+        <div>
+          <p className="text-label-sm uppercase tracking-[0.16em] text-secondary">{opportunity.organization}</p>
+          <h1 className="mt-3 max-w-4xl font-display text-headline-lg-mobile text-primary md:text-display-lg">{opportunity.title}</h1>
+          <p className="mt-4 text-body-lg text-on-surface-variant">
+            {formatDestination(opportunity)} · {formatFundingSummary(opportunity)}
+          </p>
+        </div>
+
         <a
           href={opportunity.official_url}
           target="_blank"
           rel="noreferrer"
-          className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-royal px-4 text-sm font-semibold text-surface-2 hover:bg-royal-hover"
+          className="editorial-button-primary w-fit px-5 py-3 text-label-md"
         >
-          <ArrowSquareOut size={18} />
+          <MaterialIcon name="open_in_new" size={18} />
           Postuler directement
         </a>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <DetailPanel icon={CurrencyCircleDollar} title="Avantages">
+      <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <DetailPanel icon="payments" title="Avantages">
           {benefits.map((benefit) => (
             <Line key={benefit.label} label={benefit.label} value={benefit.value} />
           ))}
         </DetailPanel>
-        <DetailPanel icon={Flag} title="Conditions">
+
+        <DetailPanel icon="rule" title="Conditions">
           {conditions.map((condition) => (
             <Line key={condition.label} label={condition.label} value={condition.value} />
           ))}
         </DetailPanel>
       </section>
 
-      <section className="panel p-5">
-        <h2 className="text-lg font-semibold text-ink">Documents requis</h2>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+      <section className="grid gap-6 lg:grid-cols-[0.9fr_1fr]">
+        <DetailPanel icon="description" title="Documents requis">
           {opportunity.required_documents.map((document) => (
-            <span key={document} className="inline-flex items-center gap-2 text-sm text-ink">
-              <CheckCircle size={16} className="text-royal" />
-              {document}
-            </span>
+            <div key={document} className="flex items-center gap-3 border-t border-outline-variant pt-3 first:border-t-0 first:pt-0">
+              <MaterialIcon name="check_circle" className="text-success" size={18} />
+              <span className="text-body-md text-on-surface-variant">{document}</span>
+            </div>
           ))}
-        </div>
-      </section>
+        </DetailPanel>
 
-      <section className="panel p-5">
-        <h2 className="text-lg font-semibold text-ink">Score {opportunity.score}/100</h2>
-        <div className="mt-4 grid gap-2">
+        <DetailPanel icon="psychology_alt" title={`Score expliqué : ${opportunity.score}/100`}>
           {scoreLines.map((line) => (
             <Line key={line.key} label={line.label} value={formatScoreLine(line)} />
           ))}
-        </div>
+        </DetailPanel>
       </section>
-    </article>
+    </main>
   );
 }
 
-type PanelIcon = React.ComponentType<{ size?: number; className?: string; weight?: "regular" | "duotone" }>;
-
-function DetailPanel({ icon: Icon, title, children }: Readonly<{ icon: PanelIcon; title: string; children: React.ReactNode }>) {
+function DetailPanel({ icon, title, children }: Readonly<{ icon: string; title: string; children: React.ReactNode }>) {
   return (
-    <section className="panel p-5">
+    <section className="editorial-card p-5 md:p-6">
       <div className="flex items-center gap-2">
-        <Icon size={20} weight="duotone" className="text-royal" />
-        <h2 className="text-lg font-semibold text-ink">{title}</h2>
+        <MaterialIcon name={icon} className="text-primary" size={22} />
+        <h2 className="font-display text-headline-md text-primary">{title}</h2>
       </div>
-      <div className="mt-4 grid gap-2">{children}</div>
+      <div className="mt-5 grid gap-3">{children}</div>
     </section>
   );
 }
 
 function Line({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <div className="flex justify-between gap-4 border-b border-border-subtle py-2 text-sm">
-      <span className="text-ink-60">{label}</span>
-      <span className="text-right font-semibold text-ink">{value}</span>
+    <div className="flex justify-between gap-4 border-t border-outline-variant pt-3 text-body-sm first:border-t-0 first:pt-0">
+      <span className="text-on-surface-variant">{label}</span>
+      <span className="text-right font-semibold text-primary">{value}</span>
     </div>
   );
 }

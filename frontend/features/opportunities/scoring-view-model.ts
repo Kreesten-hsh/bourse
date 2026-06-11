@@ -6,14 +6,14 @@ const scoreLabels: Record<string, string> = {
   global_nationality: "Ouvert international",
   technical_domain: "Domaine tech / cyber",
   undergrad_level: "Niveau compatible",
-  deadline_window: "Deadline exploitable",
+  deadline_window: "Échéance exploitable",
   travel_covered: "Billet aller-retour",
   housing_covered: "Logement inclus",
   application_fee: "Frais de candidature",
   restrictive_nationality: "Nationalité restrictive",
   advanced_degree_required: "Niveau master/PhD",
   no_funding: "Non financée",
-  unconfirmed_deadline: "Deadline non confirmée"
+  unconfirmed_deadline: "Échéance non confirmée"
 };
 
 export type ScoreLine = Readonly<{

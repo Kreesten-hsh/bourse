@@ -45,6 +45,7 @@ export type Opportunity = Readonly<{
   score: number;
   score_breakdown: ScoreBreakdown;
   status: OpportunityStatus;
+  isSaved: boolean;
   is_duplicate: boolean;
   duplicate_of_id: string | null;
   created_at: string;

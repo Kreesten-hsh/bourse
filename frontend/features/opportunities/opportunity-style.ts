@@ -44,7 +44,7 @@ export const typeLabel: Record<OpportunityType, string> = {
   scholarship: "Bourse",
   internship: "Stage",
   job: "Emploi",
-  fellowship: "Fellowship",
+  fellowship: "Programme",
   training: "Formation",
   volunteer: "Volontariat"
 };

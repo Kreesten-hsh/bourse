@@ -11,7 +11,7 @@ const typeLabels: Record<OpportunityType, string> = {
   scholarship: "Bourse",
   internship: "Stage",
   job: "Emploi",
-  fellowship: "Fellowship",
+  fellowship: "Programme",
   training: "Formation",
   volunteer: "Volontariat"
 };
@@ -30,7 +30,7 @@ export function formatOpportunityType(type: OpportunityType): string {
 
 export function formatDestination(opportunity: Opportunity): string {
   if (opportunity.is_remote) {
-    return "Remote";
+    return "À distance";
   }
 
   if (opportunity.destination_city !== null && opportunity.destination_country !== null) {

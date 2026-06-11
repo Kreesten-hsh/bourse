@@ -16,7 +16,7 @@ const fundingRank: Record<FundingType, number> = {
   none: 1
 };
 
-const technicalTerms = ["informatique", "cybersécurité", "cybersecurite", "software", "data", "ict", "ai", "cyber"] as const;
+const technicalTerms = ["informatique", "cybersécurité", "cybersecurite", "logiciel", "software", "données", "data", "tic", "ict", "ia", "ai", "cyber"] as const;
 
 export function applyOpportunityQuery(
   opportunities: ReadonlyArray<Opportunity>,
