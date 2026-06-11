@@ -46,7 +46,7 @@
   --score-low: #b3b8d0;
 
   /* === TYPOGRAPHIE === */
-  --font-sans: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), Inter, Roboto, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), 'Geist Mono', 'JetBrains Mono', monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
@@ -92,18 +92,18 @@
 
 html {
   min-height: 100%;
-  background: var(--surface);
+  background: #f8fafc;
   scroll-behavior: smooth;
 }
 
 body {
   min-height: 100dvh;
   margin: 0;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.78), transparent 28rem),
-    linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 36%, var(--surface) 100%);
-  color: var(--ink);
+  background: #f8fafc;
+  color: #0f172a;
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
   font-size: var(--text-base);
 }

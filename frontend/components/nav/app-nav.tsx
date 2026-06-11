@@ -24,10 +24,10 @@ export function AppNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 z-30 flex h-dvh w-[72px] flex-col border-r border-border-subtle bg-surface-2 backdrop-blur max-[760px]:h-16 max-[760px]:w-full max-[760px]:flex-row max-[760px]:border-b max-[760px]:border-r-0">
+    <aside className="sticky top-0 z-30 flex h-dvh w-[72px] flex-col border-r border-slate-200 bg-white backdrop-blur max-[760px]:h-16 max-[760px]:w-full max-[760px]:flex-row max-[760px]:border-b max-[760px]:border-r-0">
       <Link
         href="/opportunities"
-        className="fine-focus flex h-[72px] w-[72px] shrink-0 items-center justify-center text-center text-[11px] font-semibold leading-3 text-royal transition-colors hover:bg-royal-light max-[760px]:h-16 max-[760px]:w-20"
+        className="flex h-[72px] w-[72px] shrink-0 items-center justify-center text-center text-[11px] font-semibold leading-3 text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 max-[760px]:h-16 max-[760px]:w-20"
         aria-label="to the world"
       >
         to the<br />world
@@ -49,12 +49,12 @@ export function AppNav() {
               aria-current={isActive ? "page" : undefined}
               title={item.label}
               className={cn(
-                "fine-focus group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-l-2 border-transparent text-ink-60 transition duration-150 hover:-translate-y-px hover:bg-royal-light hover:text-royal active:translate-y-0",
-                isActive && "border-l-royal bg-[var(--royal-alpha10)] text-royal shadow-sm"
+                "group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-l-2 border-transparent text-slate-500 transition-all duration-300 ease-in-out hover:-translate-y-px hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 active:translate-y-0",
+                isActive && "border-l-blue-600 bg-blue-50 text-blue-700 shadow-sm"
               )}
             >
               <Icon size={21} weight={isActive ? "duotone" : "regular"} />
-              <span className="pointer-events-none absolute left-[50px] top-1/2 z-40 -translate-y-1/2 rounded-md border border-border-subtle bg-surface-2 px-2 py-1 text-xs font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 max-[760px]:hidden">
+              <span className="pointer-events-none absolute left-[50px] top-1/2 z-40 -translate-y-1/2 rounded-xl border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-900 opacity-0 shadow-md transition-opacity duration-300 ease-in-out group-hover:opacity-100 max-[760px]:hidden">
                 {item.label}
               </span>
             </Link>
