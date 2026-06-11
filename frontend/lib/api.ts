@@ -13,6 +13,48 @@ export type SyncResult = Readonly<{
   synced_at: string;
 }>;
 
+export type SourceType = "api" | "rss" | "scraper" | "manual";
+export type SourceFrequency = "daily" | "weekly" | "monthly" | "manual";
+export type SourceStatus = "enabled" | "disabled" | "error";
+
+export type SourceRead = Readonly<{
+  id: string;
+  name: string;
+  url: string;
+  type: SourceType;
+  frequency: SourceFrequency;
+  adapter_key: string;
+  is_active: boolean;
+  status: SourceStatus;
+  last_sync_at: string | null;
+  last_result_count: number;
+  last_error: string | null;
+}>;
+
+export type SourceCreatePayload = Readonly<{
+  name: string;
+  url: string;
+  type: SourceType;
+  frequency: SourceFrequency;
+  adapter_key: string;
+  is_active: boolean;
+}>;
+
+export type CollectionRunRead = Readonly<{
+  id: string;
+  source_id: string;
+  source_name: string;
+  started_at: string;
+  finished_at: string;
+  status: "completed" | "failed";
+  pages_seen: number;
+  items_found: number;
+  items_created: number;
+  items_updated: number;
+  duplicates_skipped: number;
+  error: string | null;
+}>;
+
 export type ApiClient = Readonly<{
   opportunities: {
     list: (filters?: OpportunityListFilters) => Promise<ReadonlyArray<Opportunity>>;
@@ -22,6 +64,12 @@ export type ApiClient = Readonly<{
   sync: {
     trigger: () => Promise<SyncResult>;
     status: () => Promise<SyncResult>;
+  };
+  sources: {
+    list: () => Promise<ReadonlyArray<SourceRead>>;
+    create: (payload: SourceCreatePayload) => Promise<SourceRead>;
+    collect: (id: string) => Promise<CollectionRunRead>;
+    runs: () => Promise<ReadonlyArray<CollectionRunRead>>;
   };
 }>;
 
@@ -43,6 +91,20 @@ export function createApiClient(fetcher: typeof fetch = fetch): ApiClient {
           method: "POST"
         }),
       status: () => requestJson<SyncResult>(buildUrl("/api/v1/sources/sync/status"), fetcher)
+    },
+    sources: {
+      list: () => requestJson<ReadonlyArray<SourceRead>>(buildUrl("/api/v1/sources"), fetcher),
+      create: (payload) =>
+        requestJson<SourceRead>(buildUrl("/api/v1/sources"), fetcher, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }),
+      collect: (id) =>
+        requestJson<CollectionRunRead>(buildUrl(`/api/v1/sources/${encodeURIComponent(id)}/collect`), fetcher, {
+          method: "POST"
+        }),
+      runs: () => requestJson<ReadonlyArray<CollectionRunRead>>(buildUrl("/api/v1/sources/runs"), fetcher)
     }
   };
 }

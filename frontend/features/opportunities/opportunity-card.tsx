@@ -46,7 +46,7 @@ export function OpportunityCard({
     <article
       aria-label={`Ouvrir ${opportunity.title}`}
       className={cn(
-        "editorial-card flex min-h-[260px] cursor-pointer flex-col justify-between p-5 md:p-6",
+        "editorial-card group flex min-h-[260px] cursor-pointer flex-col justify-between p-5 md:p-6",
         isSelected && "editorial-card-selected",
         expired && "opacity-60 hover:translate-y-0 hover:shadow-card",
         className
@@ -58,7 +58,12 @@ export function OpportunityCard({
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
-          <StatusBadge label={badge.label} tone={badge.tone} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge label={badge.label} tone={badge.tone} />
+            <span className="mono rounded-full bg-surface-container px-3 py-1 text-label-sm text-primary">
+              {opportunity.score}/100
+            </span>
+          </div>
           <button
             type="button"
             aria-label={opportunity.isSaved ? "Retirer des sauvegardées" : "Sauvegarder"}
@@ -76,10 +81,16 @@ export function OpportunityCard({
           <h2 className={cn("font-display text-headline-md text-primary line-clamp-2", isFeatured && "md:text-headline-lg")}>
             {opportunity.title}
           </h2>
-          <p className="mt-2 flex items-center gap-2 text-body-md text-on-surface-variant">
-            <MaterialIcon name="account_balance" size={16} />
-            {opportunity.organization}
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-body-md text-on-surface-variant">
+            <span className="inline-flex items-center gap-2">
+              <MaterialIcon name="account_balance" size={16} />
+              {opportunity.organization}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <MaterialIcon name="travel_explore" size={16} />
+              {formatDestination(opportunity)}
+            </span>
+          </div>
           <p className="mt-4 line-clamp-2 text-body-md text-on-surface-variant">
             {opportunity.summary ?? opportunity.raw_description}
           </p>
@@ -96,12 +107,8 @@ export function OpportunityCard({
             <MaterialIcon name="payments" size={14} />
             {formatFundingSummary(opportunity)}
           </span>
-          <span className="inline-flex items-center gap-2 sm:col-span-2">
-            <MaterialIcon name="travel_explore" size={14} />
-            {formatDestination(opportunity)}
-          </span>
         </div>
-        <span className="mt-4 inline-flex items-center gap-1 text-label-md text-primary hover:underline">
+        <span className="mt-5 inline-flex items-center gap-1 rounded-full bg-surface-container px-3 py-1.5 text-label-md text-primary transition-colors group-hover:bg-surface-container-high">
           Voir les détails
           <MaterialIcon name="arrow_forward" size={16} />
         </span>

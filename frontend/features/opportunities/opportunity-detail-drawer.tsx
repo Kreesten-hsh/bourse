@@ -85,11 +85,11 @@ export function OpportunityDetailDrawer({ opportunity, isOpen, onClose, onStatus
         aria-labelledby="drawer-title"
         tabIndex={-1}
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-outline-variant bg-surface-container-lowest shadow-panel transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] sm:w-[420px]",
+          "fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-outline-variant bg-surface-container-lowest shadow-panel transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] sm:w-[440px]",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <header className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-lowest p-6">
+        <header className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-lowest p-6 shadow-card">
           <button
             type="button"
             onClick={onClose}
@@ -124,7 +124,7 @@ export function OpportunityDetailDrawer({ opportunity, isOpen, onClose, onStatus
           </a>
         </header>
 
-        <div className="flex-1 space-y-8 overflow-y-auto p-6">
+        <div className="flex-1 space-y-8 overflow-y-auto bg-surface-container-low p-6">
           <WhySection opportunity={opportunity} />
 
           <SectionTitle icon="card_giftcard" title="Avantages" />
@@ -161,7 +161,7 @@ export function OpportunityDetailDrawer({ opportunity, isOpen, onClose, onStatus
           </section>
         </div>
 
-        <footer className="sticky bottom-0 border-t border-outline-variant bg-surface-container-lowest p-6">
+        <footer className="sticky bottom-0 border-t border-outline-variant bg-surface-container-lowest p-6 shadow-card">
           <label className="block">
             <span className="text-label-sm uppercase text-secondary">Statut</span>
             <select
@@ -217,7 +217,7 @@ function SectionTitle({ icon, title }: Readonly<{ icon: string; title: string }>
 
 function WhySection({ opportunity }: Readonly<{ opportunity: Opportunity }>) {
   return (
-    <section className="rounded border border-outline-variant bg-surface-container p-4">
+    <section className="rounded border border-border-card bg-surface-container-lowest p-4 shadow-card">
       <h3 className="text-label-sm uppercase text-secondary">Pourquoi elle mérite ton attention</h3>
       <p className="mt-3 text-body-md text-on-surface-variant">{opportunity.summary ?? opportunity.raw_description}</p>
       <p className="mt-3 text-label-md text-primary">{formatDestination(opportunity)} · {formatFundingSummary(opportunity)}</p>
@@ -269,7 +269,7 @@ function DocumentList({ documents }: Readonly<{ documents: ReadonlyArray<string>
 
 function ProfileAnalysis({ opportunity }: Readonly<{ opportunity: Opportunity }>) {
   return (
-    <section className="rounded border border-outline-variant bg-surface-container p-4">
+    <section className="rounded border border-border-card bg-surface-container-lowest p-4 shadow-card">
       <h3 className="text-label-sm uppercase text-secondary">Analyse profil</h3>
       <div className="mt-3 space-y-2 text-body-md text-on-surface-variant">
         <p>

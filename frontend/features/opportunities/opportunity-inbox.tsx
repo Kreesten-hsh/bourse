@@ -83,7 +83,6 @@ export function OpportunityInbox() {
   }, [activeFilters, eligibleOnly, opportunities, searchTerm, sortMode]);
 
   const featuredId = visibleOpportunities[0]?.score >= 80 ? visibleOpportunities[0].id : null;
-  const fundedCount = opportunities.filter((opportunity) => opportunity.funding_type === "full" || opportunity.monthly_stipend !== null).length;
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current === null) {
@@ -157,35 +156,32 @@ export function OpportunityInbox() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-container-max flex-col gap-12 px-margin-mobile py-12 md:px-margin-desktop md:py-20">
-      <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
-        <h1 className="font-display text-headline-lg-mobile text-primary md:text-display-lg">Découvrir</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Trouve les bourses, stages et formations qui peuvent vraiment ouvrir ton parcours international.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-label-md text-secondary">
-          <span>{opportunities.length} offres actives</span>
-          <span className="h-1 w-1 rounded-full bg-secondary" />
-          <span>{fundedCount} financements confirmés</span>
-        </div>
-      </section>
+    <main className="mx-auto flex w-full max-w-container-max flex-col gap-12 px-margin-mobile py-10 md:px-margin-desktop md:py-16">
+      <section className="relative overflow-hidden">
+        <div>
+          <p className="text-label-sm uppercase tracking-[0.18em] text-secondary">Centre de veille mobilité</p>
+          <h1 className="mt-4 max-w-4xl font-display text-headline-lg-mobile text-primary md:text-display-lg">
+            Repérer les portes qui peuvent changer une trajectoire.
+          </h1>
+          <p className="mt-5 max-w-2xl text-body-lg text-on-surface-variant">
+            Bourses, stages, programmes et formations financées, filtrés pour ton profil tech depuis Cotonou.
+          </p>
 
-      {opportunitiesQuery.isError ? <SourceErrorBanner onRetry={() => syncMutation.mutate()} /> : null}
-
-      <section className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <label className="block lg:w-[360px]">
-            <span className="text-label-sm uppercase text-secondary">Recherche</span>
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="mt-2 w-full border-0 border-b border-outline-variant bg-transparent px-0 py-2 text-body-md text-on-surface outline-none focus:border-primary focus:ring-0"
-              placeholder="Titre, organisation, pays, domaine..."
-              type="search"
-            />
+          <label className="mt-8 block max-w-3xl">
+            <span className="sr-only">Rechercher une opportunité</span>
+            <div className="flex items-center gap-3 rounded border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-card transition-colors focus-within:border-primary">
+              <MaterialIcon name="search" className="text-secondary" size={22} />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full border-0 bg-transparent text-body-lg text-on-surface outline-none placeholder:text-secondary focus:ring-0"
+                placeholder="Rechercher une bourse, un pays, une organisation..."
+                type="search"
+              />
+            </div>
           </label>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {filterOptions.map((filter) => {
                 const active = activeFilters.includes(filter.id);
@@ -209,8 +205,9 @@ export function OpportunityInbox() {
               })}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 text-label-md text-on-surface-variant">
+                <span className="text-secondary">Trier</span>
                 <select
                   value={sortMode}
                   onChange={(event) => setSortMode(event.target.value as OpportunitySort)}
@@ -238,7 +235,7 @@ export function OpportunityInbox() {
                 <span className="text-label-md text-on-surface-variant">Éligibles uniquement</span>
               </label>
             </div>
-          </div>
+        </div>
         </div>
       </section>
 
@@ -295,20 +292,6 @@ function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): Read
     ...opportunity,
     isSaved: opportunity.isSaved ?? false
   }));
-}
-
-function SourceErrorBanner({ onRetry }: Readonly<{ onRetry: () => void }>) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-error-container bg-error-container px-4 py-3 text-label-md text-on-error-container">
-      <span className="inline-flex items-center gap-2">
-        <MaterialIcon name="warning" size={18} />
-        La source API locale est temporairement inaccessible.
-      </span>
-      <button type="button" onClick={onRetry} className="text-primary hover:underline focus:outline-none focus-visible:shadow-focus">
-        Réessayer
-      </button>
-    </div>
-  );
 }
 
 function EmptyOpportunityState({ onSync }: Readonly<{ onSync: () => void }>) {

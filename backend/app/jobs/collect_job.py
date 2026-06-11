@@ -1,25 +1,14 @@
 from app.schemas.opportunity import OpportunityRead
 from app.schemas.opportunity import OpportunityStatus
-from app.services.collector.ofy_collector import OpportunitiesForYouthCollector
-from app.services.collector.reliefweb_collector import ReliefWebCollector
-from app.services.collector.untalent_collector import UNTalentCollector
+from app.services.osint_pipeline import osint_pipeline
 from app.services.opportunity_service import opportunity_service
 
 
 async def collect_all_sources() -> tuple[OpportunityRead, ...]:
-    collectors = (
-        ReliefWebCollector(page_limit=1),
-        UNTalentCollector(),
-        OpportunitiesForYouthCollector(limit=20),
-    )
-    created_opportunities: tuple[OpportunityRead, ...] = ()
+    before_ids = {opportunity.id for opportunity in opportunity_service.list()}
+    await osint_pipeline.collect_due_sources()
 
-    for collector in collectors:
-        result = await collector.collect()
-        created = tuple(opportunity_service.create(payload) for payload in result.opportunities)
-        created_opportunities = (*created_opportunities, *created)
-
-    return created_opportunities
+    return tuple(opportunity for opportunity in opportunity_service.list() if opportunity.id not in before_ids)
 
 
 async def deduplicate() -> int:

@@ -1,13 +1,13 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.schemas.source import SourceStatus, SourceType
+from app.schemas.source import SourceFrequency, SourceStatus, SourceType
 
 
 def utc_now() -> datetime:
@@ -21,6 +21,9 @@ class Source(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True)
     url: Mapped[str] = mapped_column(String(1000))
     type: Mapped[SourceType] = mapped_column(SqlEnum(SourceType, native_enum=False))
+    frequency: Mapped[SourceFrequency] = mapped_column(SqlEnum(SourceFrequency, native_enum=False), default=SourceFrequency.WEEKLY)
+    adapter_key: Mapped[str] = mapped_column(String(80), default="generic_html")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[SourceStatus] = mapped_column(SqlEnum(SourceStatus, native_enum=False), default=SourceStatus.ENABLED)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_result_count: Mapped[int] = mapped_column(Integer, default=0)
