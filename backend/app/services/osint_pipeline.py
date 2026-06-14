@@ -1,5 +1,6 @@
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
+import hashlib
 from uuid import UUID
 
 import httpx
@@ -7,6 +8,10 @@ import httpx
 from app.schemas.opportunity import OpportunityCreate, OpportunityStatus
 from app.schemas.osint import CollectionRunRead, CollectionRunStatus, ExtractedOpportunityDraft, FetchedDocument, ValidationStatus
 from app.schemas.source import SourceRead
+from app.services.collector.base_collector import BaseCollector
+from app.services.collector.ofy_collector import OpportunitiesForYouthCollector
+from app.services.collector.reliefweb_collector import ReliefWebCollector
+from app.services.collector.untalent_collector import UNTalentCollector
 from app.services.dedup_service import DeduplicationCandidate, detect_duplicate
 from app.services.opportunity_service import OpportunityService, opportunity_service
 from app.services.osint_extractor import GenericOpportunityExtractor
@@ -14,6 +19,13 @@ from app.services.source_registry_service import SourceRegistryService, source_r
 
 
 FetchSource = Callable[[SourceRead], Awaitable[FetchedDocument]]
+CollectorFactory = Callable[[], BaseCollector]
+
+DEFAULT_COLLECTOR_FACTORIES: dict[str, CollectorFactory] = {
+    "reliefweb_jobs_api": ReliefWebCollector,
+    "untalent_rss": UNTalentCollector,
+    "ofy_home": OpportunitiesForYouthCollector,
+}
 
 
 async def default_fetch_source(source: SourceRead) -> FetchedDocument:
@@ -42,11 +54,13 @@ class OsintPipeline:
         opportunity_service: OpportunityService,
         extractor: GenericOpportunityExtractor,
         fetcher: FetchSource = default_fetch_source,
+        collector_factories: dict[str, CollectorFactory] | None = None,
     ) -> None:
         self._source_registry = source_registry
         self._opportunity_service = opportunity_service
         self._extractor = extractor
         self._fetcher = fetcher
+        self._collector_factories = collector_factories or DEFAULT_COLLECTOR_FACTORIES
         self._content_hashes: frozenset[str] = frozenset()
         self._runs: tuple[CollectionRunRead, ...] = ()
 
@@ -78,9 +92,7 @@ class OsintPipeline:
             return self._record_failed_run(source, started_at, "Source inactive")
 
         try:
-            document = await self._fetcher(source)
-            self._ensure_successful_fetch(document)
-            drafts = self._extractor.extract(source, document.content, document.content_type, document.url)
+            drafts = await self._collect_drafts(source)
             created_count, duplicate_count = self._publish_drafts(drafts)
             self._source_registry.mark_success(source.id, created_count)
 
@@ -95,6 +107,30 @@ class OsintPipeline:
         except Exception as error:
             self._source_registry.mark_error(source.id, str(error))
             return self._record_failed_run(source, started_at, str(error))
+
+    async def _collect_drafts(self, source: SourceRead) -> tuple[ExtractedOpportunityDraft, ...]:
+        collector_factory = self._collector_factories.get(source.adapter_key)
+
+        if collector_factory is None:
+            document = await self._fetcher(source)
+            self._ensure_successful_fetch(document)
+            return self._extractor.extract(source, document.content, document.content_type, document.url)
+
+        result = await collector_factory().collect()
+
+        return tuple(self._build_draft_from_payload(payload) for payload in result.opportunities)
+
+    def _build_draft_from_payload(self, payload: OpportunityCreate) -> ExtractedOpportunityDraft:
+        validation_status = ValidationStatus.VERIFIED if payload.deadline_confirmed else ValidationStatus.NEEDS_REVIEW
+        validation_notes = () if payload.deadline_confirmed else ("Échéance non confirmée",)
+
+        return ExtractedOpportunityDraft(
+            payload=payload,
+            canonical_url=payload.official_url,
+            content_hash=self._content_hash(payload),
+            validation_status=validation_status,
+            validation_notes=validation_notes,
+        )
 
     def _publish_drafts(self, drafts: tuple[ExtractedOpportunityDraft, ...]) -> tuple[int, int]:
         created_count = 0
@@ -140,6 +176,11 @@ class OsintPipeline:
     def _ensure_successful_fetch(self, document: FetchedDocument) -> None:
         if document.status_code >= 400:
             raise ValueError(f"Source returned HTTP {document.status_code}")
+
+    def _content_hash(self, payload: OpportunityCreate) -> str:
+        raw_value = f"{payload.source_name}|{payload.official_url}|{payload.title}|{payload.raw_description}"
+
+        return hashlib.sha256(raw_value.encode("utf-8")).hexdigest()
 
     def _record_completed_run(
         self,

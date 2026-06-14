@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from app.schemas.source import SourceCreate, SourceFrequency, SourceRead, SourceStatus, SourceUpdate
+from app.schemas.source import SourceType
 
 
 class SourceNotFoundError(LookupError):
@@ -116,4 +117,29 @@ class SourceRegistryService:
         return checked_at - source.last_sync_at >= required_interval
 
 
-source_registry_service = SourceRegistryService()
+DEFAULT_OSINT_SOURCES: tuple[SourceRead, ...] = (
+    SourceRead(
+        name="ReliefWeb ICT Jobs",
+        url="https://api.reliefweb.int/v1/jobs",
+        type=SourceType.API,
+        frequency=SourceFrequency.DAILY,
+        adapter_key="reliefweb_jobs_api",
+    ),
+    SourceRead(
+        name="UN Talent RSS",
+        url="https://untalent.org/jobs/rss",
+        type=SourceType.RSS,
+        frequency=SourceFrequency.DAILY,
+        adapter_key="untalent_rss",
+    ),
+    SourceRead(
+        name="Opportunities For Youth",
+        url="https://opportunitiesforyouth.org/",
+        type=SourceType.SCRAPER,
+        frequency=SourceFrequency.DAILY,
+        adapter_key="ofy_home",
+    ),
+)
+
+
+source_registry_service = SourceRegistryService(initial_sources=DEFAULT_OSINT_SOURCES)

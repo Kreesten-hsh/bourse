@@ -14,7 +14,6 @@ import {
 } from "./opportunity-collection";
 import { OpportunityCard } from "./opportunity-card";
 import { OpportunityDetailDrawer } from "./opportunity-detail-drawer";
-import { sampleOpportunities } from "./sample-opportunities";
 
 type FilterOption = Readonly<{
   id: OpportunityFilter;
@@ -55,12 +54,11 @@ export function OpportunityInbox() {
 
   useEffect(() => {
     if (opportunitiesQuery.isSuccess) {
-      const nextOpportunities = opportunitiesQuery.data.length > 0 ? opportunitiesQuery.data : sampleOpportunities;
-      setOpportunities(normalizeOpportunities(nextOpportunities));
+      setOpportunities(normalizeOpportunities(opportunitiesQuery.data));
     }
 
     if (opportunitiesQuery.isError) {
-      setOpportunities(sampleOpportunities);
+      setOpportunities([]);
     }
   }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess]);
 
@@ -195,6 +193,8 @@ export function OpportunityInbox() {
         </div>
       </section>
 
+      {opportunitiesQuery.isError ? <SourceErrorBanner /> : null}
+
       {visibleOpportunities.length > 0 ? (
         <section className="grid grid-cols-1 gap-gutter md:grid-cols-12">
           {visibleOpportunities.map((opportunity, index) => {
@@ -214,7 +214,7 @@ export function OpportunityInbox() {
           })}
         </section>
       ) : (
-        <EmptyOpportunityState onSync={() => syncMutation.mutate()} />
+        <EmptyOpportunityState isSyncing={syncMutation.isPending} onSync={() => syncMutation.mutate()} />
       )}
 
       <OpportunityDetailDrawer
@@ -255,16 +255,30 @@ function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): Read
   }));
 }
 
-function EmptyOpportunityState({ onSync }: Readonly<{ onSync: () => void }>) {
+function SourceErrorBanner() {
+  return (
+    <section className="flex items-center gap-3 border border-error-container bg-error-container px-4 py-3 text-body-md text-error">
+      <MaterialIcon name="cancel" size={18} />
+      <p>L'API locale ne répond pas. Démarre le backend puis relance une synchronisation OSINT.</p>
+    </section>
+  );
+}
+
+function EmptyOpportunityState({ isSyncing, onSync }: Readonly<{ isSyncing: boolean; onSync: () => void }>) {
   return (
     <section className="flex min-h-[420px] flex-col items-center justify-center rounded border border-outline-variant bg-surface-container-lowest p-12 text-center">
       <MaterialIcon name="book" className="text-outline-variant" size={64} />
-      <h2 className="mt-4 font-display text-headline-md text-primary">Aucune opportunité trouvée</h2>
+      <h2 className="mt-4 font-display text-headline-md text-primary">Aucune opportunité collectée</h2>
       <p className="mt-3 max-w-md text-body-md text-on-surface-variant">
-        Essaie d'élargir la recherche ou de relancer les sources enregistrées.
+        Lance une synchronisation pour récupérer les dernières opportunités depuis les sources OSINT enregistrées.
       </p>
-      <button type="button" onClick={onSync} className="editorial-button-primary mt-6 px-6 py-3 text-label-md">
-        Synchroniser les sources
+      <button
+        type="button"
+        onClick={onSync}
+        disabled={isSyncing}
+        className="editorial-button-primary mt-6 px-6 py-3 text-label-md disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isSyncing ? "Synchronisation..." : "Synchroniser les sources"}
       </button>
     </section>
   );

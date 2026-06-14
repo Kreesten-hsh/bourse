@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { buildBenefits, buildConditions } from "@/features/opportunities/opportunity-view-model";
-import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
+import { api } from "@/lib/api";
+import type { Opportunity } from "@/types/opportunity";
 
 type OpportunityDetailPageProps = Readonly<{
   params: Promise<{ id: string }>;
@@ -10,9 +11,9 @@ type OpportunityDetailPageProps = Readonly<{
 
 export default async function OpportunityDetailPage({ params }: OpportunityDetailPageProps) {
   const { id } = await params;
-  const opportunity = sampleOpportunities.find((item) => item.id === id);
+  const opportunity = await loadOpportunity(id);
 
-  if (opportunity === undefined) {
+  if (opportunity === null) {
     notFound();
   }
 
@@ -64,6 +65,14 @@ export default async function OpportunityDetailPage({ params }: OpportunityDetai
       </section>
     </main>
   );
+}
+
+async function loadOpportunity(id: string): Promise<Opportunity | null> {
+  try {
+    return await api.opportunities.get(id);
+  } catch {
+    return null;
+  }
 }
 
 function DetailPanel({ icon, title, children }: Readonly<{ icon: string; title: string; children: React.ReactNode }>) {

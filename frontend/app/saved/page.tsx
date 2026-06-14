@@ -1,22 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { OpportunityCard } from "@/features/opportunities/opportunity-card";
 import { OpportunityDetailDrawer } from "@/features/opportunities/opportunity-detail-drawer";
-import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
+import { api } from "@/lib/api";
 import type { Opportunity } from "@/types/opportunity";
 
 const closeDelayMs = 300;
 
 export default function SavedPage() {
   const closeTimerRef = useRef<number | null>(null);
-  const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>(sampleOpportunities);
+  const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>([]);
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const opportunitiesQuery = useQuery({
+    queryKey: ["opportunities"],
+    queryFn: () => api.opportunities.list()
+  });
 
   const savedOpportunities = opportunities.filter((opportunity) => opportunity.isSaved);
+
+  useEffect(() => {
+    if (opportunitiesQuery.isSuccess) {
+      setOpportunities(normalizeOpportunities(opportunitiesQuery.data));
+    }
+
+    if (opportunitiesQuery.isError) {
+      setOpportunities([]);
+    }
+  }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess]);
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current === null) {
@@ -113,4 +128,11 @@ export default function SavedPage() {
       />
     </main>
   );
+}
+
+function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<Opportunity> {
+  return opportunities.map((opportunity) => ({
+    ...opportunity,
+    isSaved: opportunity.isSaved ?? false
+  }));
 }

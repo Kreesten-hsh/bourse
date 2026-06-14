@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/api";
 import type { Opportunity, OpportunityStatus } from "@/types/opportunity";
 import { OpportunityDetailDrawer } from "@/features/opportunities/opportunity-detail-drawer";
-import { sampleOpportunities } from "@/features/opportunities/sample-opportunities";
 import { formatDeadlineLabel, formatDestination } from "@/features/opportunities/opportunity-view-model";
 
 type JourneyStage = Readonly<{
@@ -34,9 +35,23 @@ const journeyStages: ReadonlyArray<JourneyStage> = [
 
 export function PipelineBoard() {
   const closeTimerRef = useRef<number | null>(null);
-  const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>(sampleOpportunities);
+  const [opportunities, setOpportunities] = useState<ReadonlyArray<Opportunity>>([]);
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const opportunitiesQuery = useQuery({
+    queryKey: ["opportunities"],
+    queryFn: () => api.opportunities.list()
+  });
+
+  useEffect(() => {
+    if (opportunitiesQuery.isSuccess) {
+      setOpportunities(normalizeOpportunities(opportunitiesQuery.data));
+    }
+
+    if (opportunitiesQuery.isError) {
+      setOpportunities([]);
+    }
+  }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess]);
 
   const groupedStages = useMemo(
     () =>
@@ -137,6 +152,13 @@ export function PipelineBoard() {
       />
     </main>
   );
+}
+
+function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<Opportunity> {
+  return opportunities.map((opportunity) => ({
+    ...opportunity,
+    isSaved: opportunity.isSaved ?? false
+  }));
 }
 
 function JourneyStageRow({
