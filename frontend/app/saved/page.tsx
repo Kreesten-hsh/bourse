@@ -17,8 +17,8 @@ export default function SavedPage() {
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const opportunitiesQuery = useQuery({
-    queryKey: ["opportunities"],
-    queryFn: () => api.opportunities.list()
+    queryKey: ["savedOpportunities"],
+    queryFn: () => api.saved.list()
   });
 
   const savedOpportunities = opportunities.filter((opportunity) => opportunity.isSaved);
@@ -74,7 +74,12 @@ export default function SavedPage() {
     }
   }, [opportunities, selectedOpportunity]);
 
-  function handleToggleSaved(opportunityId: string): void {
+  async function handleToggleSaved(opportunityId: string): Promise<void> {
+    const opportunity = opportunities.find((o) => o.id === opportunityId);
+    if (!opportunity) return;
+    
+    const wasSaved = opportunity.isSaved;
+
     setOpportunities((currentOpportunities) =>
       currentOpportunities.map((opportunity) => {
         if (opportunity.id !== opportunityId) {
@@ -84,6 +89,24 @@ export default function SavedPage() {
         return { ...opportunity, isSaved: !opportunity.isSaved };
       })
     );
+
+    try {
+      if (wasSaved) {
+        await api.saved.remove(opportunityId);
+      } else {
+        await api.saved.save(opportunityId);
+      }
+    } catch (error) {
+      console.error("Failed to toggle save status", error);
+      setOpportunities((currentOpportunities) =>
+        currentOpportunities.map((opportunity) => {
+          if (opportunity.id !== opportunityId) {
+            return opportunity;
+          }
+          return { ...opportunity, isSaved: wasSaved };
+        })
+      );
+    }
   }
 
   return (
@@ -133,6 +156,6 @@ export default function SavedPage() {
 function normalizeOpportunities(opportunities: ReadonlyArray<Opportunity>): ReadonlyArray<Opportunity> {
   return opportunities.map((opportunity) => ({
     ...opportunity,
-    isSaved: opportunity.isSaved ?? false
+    isSaved: true
   }));
 }

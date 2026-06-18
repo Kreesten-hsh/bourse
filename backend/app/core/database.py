@@ -28,6 +28,27 @@ AsyncSessionFactory = async_sessionmaker(
 )
 
 
-async def get_async_session() -> AsyncIterator[AsyncSession]:
+async def init_db() -> None:
+    # Importer les modèles pour qu'ils soient enregistrés
+    from app.models.collection_run import CollectionRun
+    from app.models.opportunity import Opportunity
+    from app.models.saved_opportunity import SavedOpportunity
+    from app.models.source import Source
+    from app.services.source_registry_service import DEFAULT_OSINT_SOURCES, source_registry_service
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Initialisation des sources par défaut
+    async with AsyncSessionFactory() as session:
+        for source_data in DEFAULT_OSINT_SOURCES:
+            try:
+                await source_registry_service.create(session, source_data)
+            except ValueError:
+                # Ignore DuplicateSourceError
+                pass
+
+
+async def get_db() -> AsyncIterator[AsyncSession]:
     async with AsyncSessionFactory() as session:
         yield session

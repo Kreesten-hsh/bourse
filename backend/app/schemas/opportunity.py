@@ -75,6 +75,7 @@ class OpportunityBase(BaseModel):
     eligibility_notes: str | None = None
     risks: str | None = None
     candidacy_angle: str | None = None
+    content_hash: str | None = Field(default=None, max_length=64)
     collected_at: datetime
     expires_at: datetime | None = None
 

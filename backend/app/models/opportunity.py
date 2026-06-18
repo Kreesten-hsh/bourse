@@ -19,7 +19,6 @@ class Opportunity(Base):
     __tablename__ = "opportunities"
     __table_args__ = (
         Index("ix_opportunities_external_source", "external_id", "source_name"),
-        Index("ix_opportunities_title", "title"),
     )
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -61,6 +60,7 @@ class Opportunity(Base):
     score: Mapped[int] = mapped_column(Integer, default=0)
     score_breakdown: Mapped[dict[str, int]] = mapped_column(JSONB, default=dict)
     status: Mapped[OpportunityStatus] = mapped_column(SqlEnum(OpportunityStatus, native_enum=False), default=OpportunityStatus.NEW)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     is_duplicate: Mapped[bool] = mapped_column(Boolean, default=False)
     duplicate_of_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True),

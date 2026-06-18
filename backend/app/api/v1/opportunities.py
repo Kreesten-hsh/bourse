@@ -1,7 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_db
 from app.schemas.opportunity import OpportunityRead, OpportunityStatus, OpportunityStatusUpdate
 from app.services.opportunity_service import OpportunityNotFoundError, opportunity_service
 
@@ -13,8 +15,9 @@ router = APIRouter(prefix="/api/v1/opportunities", tags=["opportunities"])
 async def list_opportunities(
     status: OpportunityStatus | None = Query(default=None),
     minimum_score: int | None = Query(default=None, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
 ) -> tuple[OpportunityRead, ...]:
-    opportunities = opportunity_service.list()
+    opportunities = await opportunity_service.list(db)
 
     if status is not None:
         opportunities = tuple(opportunity for opportunity in opportunities if opportunity.status is status)
@@ -26,16 +29,23 @@ async def list_opportunities(
 
 
 @router.get("/{opportunity_id}", response_model=OpportunityRead)
-async def get_opportunity(opportunity_id: UUID) -> OpportunityRead:
+async def get_opportunity(
+    opportunity_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> OpportunityRead:
     try:
-        return opportunity_service.get(opportunity_id)
+        return await opportunity_service.get(db, opportunity_id)
     except OpportunityNotFoundError as error:
         raise HTTPException(status_code=404, detail="Opportunity not found") from error
 
 
 @router.patch("/{opportunity_id}/status", response_model=OpportunityRead)
-async def update_opportunity_status(opportunity_id: UUID, payload: OpportunityStatusUpdate) -> OpportunityRead:
+async def update_opportunity_status(
+    opportunity_id: UUID,
+    payload: OpportunityStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> OpportunityRead:
     try:
-        return opportunity_service.update_status(opportunity_id, payload.status)
+        return await opportunity_service.update_status(db, opportunity_id, payload.status)
     except OpportunityNotFoundError as error:
         raise HTTPException(status_code=404, detail="Opportunity not found") from error

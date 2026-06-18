@@ -45,6 +45,11 @@ export function OpportunityInbox() {
     queryFn: () => api.opportunities.list()
   });
 
+  const savedQuery = useQuery({
+    queryKey: ["savedOpportunities"],
+    queryFn: () => api.saved.list()
+  });
+
   const syncMutation = useMutation({
     mutationFn: () => api.sync.trigger(),
     onSuccess: () => {
@@ -53,14 +58,20 @@ export function OpportunityInbox() {
   });
 
   useEffect(() => {
-    if (opportunitiesQuery.isSuccess) {
-      setOpportunities(normalizeOpportunities(opportunitiesQuery.data));
+    if (opportunitiesQuery.isSuccess && savedQuery.isSuccess) {
+      const savedIds = new Set(savedQuery.data.map((o) => o.id));
+      setOpportunities(
+        opportunitiesQuery.data.map((opportunity) => ({
+          ...opportunity,
+          isSaved: savedIds.has(opportunity.id)
+        }))
+      );
     }
 
     if (opportunitiesQuery.isError) {
       setOpportunities([]);
     }
-  }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess]);
+  }, [opportunitiesQuery.data, opportunitiesQuery.isError, opportunitiesQuery.isSuccess, savedQuery.data, savedQuery.isSuccess]);
 
   const visibleOpportunities = useMemo(() => {
     const queried = applyOpportunityQuery(opportunities, { searchTerm, activeFilters });
@@ -123,7 +134,12 @@ export function OpportunityInbox() {
     });
   }
 
-  function handleToggleSaved(opportunityId: string): void {
+  async function handleToggleSaved(opportunityId: string): Promise<void> {
+    const opportunity = opportunities.find((o) => o.id === opportunityId);
+    if (!opportunity) return;
+    
+    const wasSaved = opportunity.isSaved;
+
     setOpportunities((currentOpportunities) =>
       currentOpportunities.map((opportunity) => {
         if (opportunity.id !== opportunityId) {
@@ -133,6 +149,25 @@ export function OpportunityInbox() {
         return { ...opportunity, isSaved: !opportunity.isSaved };
       })
     );
+
+    try {
+      if (wasSaved) {
+        await api.saved.remove(opportunityId);
+      } else {
+        await api.saved.save(opportunityId);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["savedOpportunities"] });
+    } catch (error) {
+      console.error("Failed to toggle save status", error);
+      setOpportunities((currentOpportunities) =>
+        currentOpportunities.map((opportunity) => {
+          if (opportunity.id !== opportunityId) {
+            return opportunity;
+          }
+          return { ...opportunity, isSaved: wasSaved };
+        })
+      );
+    }
   }
 
   if (opportunitiesQuery.isLoading && opportunities.length === 0) {

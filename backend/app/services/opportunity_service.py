@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.opportunity import Opportunity
 from app.schemas.opportunity import OpportunityCreate, OpportunityRead, OpportunityStatus
 from app.services.scoring_service import ScoringOpportunity, calculate_opportunity_score
 
@@ -10,27 +14,24 @@ class OpportunityNotFoundError(LookupError):
 
 
 class OpportunityService:
-    def __init__(self, initial_opportunities: tuple[OpportunityRead, ...] = ()) -> None:
-        self._opportunities = {opportunity.id: opportunity for opportunity in initial_opportunities}
+    async def list(self, db: AsyncSession) -> tuple[OpportunityRead, ...]:
+        stmt = select(Opportunity).order_by(desc(Opportunity.score), desc(Opportunity.created_at))
+        result = await db.execute(stmt)
+        opportunities = result.scalars().all()
+        
+        return tuple(OpportunityRead.model_validate(opp, from_attributes=True) for opp in opportunities)
 
-    def list(self) -> tuple[OpportunityRead, ...]:
-        return tuple(
-            sorted(
-                self._opportunities.values(),
-                key=lambda opportunity: (opportunity.score, opportunity.created_at),
-                reverse=True,
-            )
-        )
-
-    def get(self, opportunity_id: UUID) -> OpportunityRead:
-        opportunity = self._opportunities.get(opportunity_id)
+    async def get(self, db: AsyncSession, opportunity_id: UUID) -> OpportunityRead:
+        stmt = select(Opportunity).where(Opportunity.id == opportunity_id)
+        result = await db.execute(stmt)
+        opportunity = result.scalars().first()
 
         if opportunity is None:
             raise OpportunityNotFoundError(str(opportunity_id))
 
-        return opportunity
+        return OpportunityRead.model_validate(opportunity, from_attributes=True)
 
-    def create(self, payload: OpportunityCreate) -> OpportunityRead:
+    async def create(self, db: AsyncSession, payload: OpportunityCreate) -> OpportunityRead:
         now = datetime.now(timezone.utc)
         scoring_input = ScoringOpportunity(
             funding_type=payload.funding_type,
@@ -45,8 +46,10 @@ class OpportunityService:
             application_fee=payload.application_fee,
         )
         score_result = calculate_opportunity_score(scoring_input)
-        opportunity = OpportunityRead(
-            **payload.model_dump(),
+        
+        opportunity_data = payload.model_dump()
+        opportunity = Opportunity(
+            **opportunity_data,
             id=uuid4(),
             score=score_result.score,
             score_breakdown=score_result.breakdown,
@@ -55,17 +58,26 @@ class OpportunityService:
             duplicate_of_id=None,
             created_at=now,
             updated_at=now,
+            collected_at=payload.collected_at or now,
         )
-        self._opportunities = {**self._opportunities, opportunity.id: opportunity}
+        db.add(opportunity)
+        await db.flush()
+        
+        return OpportunityRead.model_validate(opportunity, from_attributes=True)
 
-        return opportunity
+    async def update_status(self, db: AsyncSession, opportunity_id: UUID, status: OpportunityStatus) -> OpportunityRead:
+        stmt = select(Opportunity).where(Opportunity.id == opportunity_id)
+        result = await db.execute(stmt)
+        opportunity = result.scalars().first()
 
-    def update_status(self, opportunity_id: UUID, status: OpportunityStatus) -> OpportunityRead:
-        opportunity = self.get(opportunity_id)
-        updated_opportunity = opportunity.model_copy(update={"status": status, "updated_at": datetime.now(timezone.utc)})
-        self._opportunities = {**self._opportunities, opportunity_id: updated_opportunity}
+        if opportunity is None:
+            raise OpportunityNotFoundError(str(opportunity_id))
 
-        return updated_opportunity
+        opportunity.status = status
+        opportunity.updated_at = datetime.now(timezone.utc)
+        await db.flush()
+
+        return OpportunityRead.model_validate(opportunity, from_attributes=True)
 
 
 opportunity_service = OpportunityService()

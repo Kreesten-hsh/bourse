@@ -16,6 +16,7 @@ const navItems: ReadonlyArray<NavItem> = [
   { href: "/opportunities", label: "Opportunités", icon: "travel_explore" },
   { href: "/pipeline", label: "Suivi", icon: "kanban" },
   { href: "/saved", label: "Sauvegardées", icon: "bookmark_border" },
+  { href: "/sources", label: "Sources", icon: "public" },
 ];
 
 export function AppNav() {

@@ -1,79 +1,167 @@
-# to the world Design System
+# to the world - Design System
 
-## Design Thesis
+## Positionnement Design
 
-A calm, precise mobility command center: spacious enough to read opportunities clearly, dense enough to process many leads, and visually distinct without becoming decorative.
+`to the world` doit ressembler a un centre de decision editorial pour la mobilite internationale, pas a un dashboard SaaS generique.
 
-## Visual Scene
+La direction actuelle est : calme, premium, academique, Swiss/bento, avec une lecture rapide des opportunites et un drawer de detail qui donne la sensation d'une fiche soigneusement editee.
 
-The user reviews international opportunities at a desk in the evening on a laptop, focused and slightly time-sensitive, needing confidence rather than spectacle.
+## Etat Reel De L'Interface
 
-## Color Strategy
+L'interface actuelle utilise :
 
-Royal product palette with one primary action color and one atmospheric surface color.
+- une navbar sombre avec effet glass controle ;
+- une page principale `/opportunities` centree sur un hero editorial ;
+- une ligne unique de filtres compacts avec recherche a droite ;
+- des cartes opportunites en grille bento ;
+- un drawer lateral droit qui s'ouvre uniquement au clic sur une carte ;
+- une feuille quasi plein ecran sur mobile pour le detail ;
+- une page `/pipeline` orientee parcours de candidature ;
+- une page `/sources` pour l'outil OSINT ;
+- une page `/saved` pour les opportunites gardees sous la main.
 
-- Primary action: royal blue `#3447AA`.
-- Atmospheric surface: powder pink `#FBEAEB`.
-- Surface: white rose, soft enough to sit on powder pink.
-- Secondary surface: pale royal blue or white rose.
-- Text: blue-black ink, never pure black.
-- Muted text: cool slate with royal undertone.
-- Success: restrained green.
-- Warning: amber.
-- Danger: muted red.
-- Info: royal blue tint.
+## Composition Produit
 
-Use royal blue for command surfaces, selection, primary action, score emphasis, direct application links, and focus states. Use powder pink as the atmospheric base, not as a decorative accent.
+La page principale suit cette structure :
 
-## Typography
+1. hero minimal avec promesse de mobilite ;
+2. indicateurs discrets : opportunites actives et financements detectes ;
+3. filtres sur une seule ligne ;
+4. recherche integree a droite de la meme ligne ;
+5. grille bento de cartes ;
+6. drawer de lecture au clic ;
+7. footer discret.
 
-- UI font: Geist or Satoshi.
-- Numeric font: Geist Mono or JetBrains Mono.
-- No serif fonts in the product UI.
-- No fluid viewport-based type scaling.
-- Headings stay compact and work-focused.
-- Body line length for prose is capped around 65 to 75 characters.
+La logique `sidebar + tableau + inspecteur permanent` est abandonnee.
 
-## Layout Principles
+## Drawer De Detail
 
-- App shell with a strong top command bar, central workspace, and right inspector.
-- Lists and detail sections use spacing, dividers, and alignment before cards.
-- Cards are only used when they are interactive objects or persistent records.
-- Opportunity detail pages are airy, with sections that help comprehension.
-- Financial benefits and application links are visually easy to find.
-- The interface should feel like a mobility console, not a generic admin dashboard.
+Le detail d'une opportunite est la zone critique du produit.
 
-## Motion Principles
+Etat attendu :
 
-- Motion explains state and feedback.
-- Use 150 to 250 ms transitions for routine UI.
-- Use transform and opacity only.
-- Button press feedback uses subtle scale or translate.
-- Skeleton loading replaces central spinners.
-- No decorative page-load choreography.
+- masque par defaut ;
+- ouvert uniquement au clic sur une carte ;
+- scrim sombre derriere le drawer ;
+- fermeture par bouton, clic backdrop et Escape ;
+- header compact pour laisser la place au corps ;
+- ordre de lecture clair : titre, organisation, action, attention, avantages, documents, conditions, analyse personnalisee ;
+- actions finales limitees a `Postuler` et `Sauvegarder`.
 
-## Iconography
+Elements retires volontairement :
 
-Use Phosphor Icons with one consistent weight. Icons must improve scanning: source, deadline, funding, location, documents, status, apply, alert, archive, sync.
+- score explique dans le drawer ;
+- selecteur de statut en bas du drawer ;
+- bouton `Preparer le dossier` ;
+- bloc de metadonnees redondant sous l'organisation.
 
-## Component Vocabulary
+## Couleurs
 
-- Buttons: primary, secondary, ghost, danger.
-- Inputs: label above field, helper text optional, error below field.
-- Filters: compact removable chips.
-- Tables: dense rows, stable columns, keyboard-friendly selection.
-- Inspector: sticky context panel with readable sections.
-- Status: plain text plus restrained color marker.
-- Alerts: inline, source-specific, never global unless the whole system fails.
+Palette historique :
 
-## Banned Patterns
+- Royal Blue : `#3447AA` ;
+- Powder Pink : `#FBEAEB`.
 
-- Gradient text.
-- Purple-blue AI gradients.
-- Heavy glassmorphism.
-- Hero section inside the app.
-- Three-card feature row.
-- Overuse of badges.
-- Fake metrics.
-- Spinner-only loading states.
-- Decorative icons that do not clarify content.
+Palette appliquee dans l'interface actuelle :
+
+- surface dominante : blanc chaud / rose tres leger ;
+- texte principal : bleu nuit `#03192e` ;
+- navbar : bleu nuit semi-transparent avec blur ;
+- actions et focus : bleu royal / bleu institutionnel ;
+- rose : atmosphere de fond, jamais decoration lourde ;
+- vert, ambre et rouge : uniquement pour etats semantiques.
+
+Le blanc doit dominer. Le bleu guide. Le rose respire.
+
+## Typographie
+
+La typographie actuelle utilise une pile systeme moderne :
+
+- display : `Aptos Display`, `Segoe UI Variable Display`, `SF Pro Display`, `Inter`, system-ui ;
+- texte : `Aptos`, `Segoe UI Variable Text`, `SF Pro Text`, `Inter`, system-ui ;
+- mono : `Cascadia Mono`, `JetBrains Mono`, `SFMono-Regular`, `Consolas`.
+
+Regles :
+
+- les titres portent l'identite ;
+- les metadonnees restent discretes ;
+- pas de type fluide base sur la largeur viewport ;
+- pas de surenchere de badges ;
+- les fiches doivent rester lisibles en moins de quelques secondes.
+
+## Iconographie
+
+L'app utilise actuellement `MaterialIcon`, un wrapper SVG local.
+
+Regles :
+
+- une seule famille visuelle ;
+- trait fin et coherent ;
+- icones utiles a la lecture : source, pays, deadline, financement, sauvegarde, candidature, statut ;
+- l'icone profil dans la navbar remplace l'engrenage pour les parametres.
+
+## Cartes Opportunites
+
+Les cartes doivent rester :
+
+- blanches ;
+- bordure fine ;
+- shadow legere par defaut ;
+- shadow plus visible au hover ;
+- leger lift vertical au hover ;
+- contenu limite a l'essentiel ;
+- titre fort, metadonnees sobres, CTA discret.
+
+Une carte selectionnee doit gagner en presence sans glow, sans neon et sans effet decoratif lourd.
+
+## Etats UI
+
+Etats presents ou attendus :
+
+- loading skeleton, pas de spinner central ;
+- empty state OSINT avec action de synchronisation ;
+- erreur API visible mais discrete ;
+- drawer ferme par defaut ;
+- mobile adapte au plein ecran ;
+- focus visible pour les elements interactifs.
+
+## Motion
+
+Motion sobre et fonctionnelle :
+
+- transitions courtes ;
+- transform + opacity ;
+- lift sur cartes ;
+- drawer en translation horizontale ;
+- feedback immediat au clic ;
+- pas d'animation idle permanente ;
+- pas de glow ;
+- pas de gradient anime.
+
+## Pages Support
+
+`/pipeline` doit rester plus editorial que kanban industriel.
+
+`/sources` doit assumer son role OSINT : registre des sources, creation, collecte manuelle et statut de source.
+
+`/saved` est utile, mais doit devenir persistant pour etre un vrai espace personnel.
+
+`/settings` contient le profil et les preferences de score/notification.
+
+## Dette Design Actuelle
+
+- La page detail directe `/opportunities/[id]` est fonctionnelle, mais moins premium que le drawer.
+- Les pages support doivent encore recevoir le meme niveau de finition visuelle que `/opportunities`.
+- Les sauvegardes ne sont pas persistantes, donc l'experience `/saved` reste partielle.
+- Une verification responsive par captures desktop/mobile doit etre refaite apres stabilisation du serveur local.
+
+## Interdits
+
+- tableau HTML classique pour les opportunites ;
+- dashboard KPI ;
+- admin panel ;
+- hero marketing IA generique ;
+- glassmorphism partout ;
+- gradients flashy ;
+- icones melangees ;
+- score ou metriques qui prennent plus de place que le contenu utile.

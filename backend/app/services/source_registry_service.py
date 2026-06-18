@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.source import Source
 from app.schemas.source import SourceCreate, SourceFrequency, SourceRead, SourceStatus, SourceUpdate
 from app.schemas.source import SourceType
 
@@ -14,87 +18,111 @@ class DuplicateSourceError(ValueError):
 
 
 class SourceRegistryService:
-    def __init__(self, initial_sources: tuple[SourceRead, ...] = ()) -> None:
-        self._sources = {source.id: source for source in initial_sources}
-
-    def list(self, include_inactive: bool = True) -> tuple[SourceRead, ...]:
-        sources = tuple(self._sources.values())
+    async def list(self, db: AsyncSession, include_inactive: bool = True) -> tuple[SourceRead, ...]:
+        stmt = select(Source).order_by(Source.name)
+        result = await db.execute(stmt)
+        sources = result.scalars().all()
 
         if include_inactive:
-            return tuple(sorted(sources, key=lambda source: source.name.casefold()))
+            return tuple(SourceRead.model_validate(source, from_attributes=True) for source in sources)
 
         active_sources = tuple(source for source in sources if source.is_active and source.status is SourceStatus.ENABLED)
+        return tuple(SourceRead.model_validate(source, from_attributes=True) for source in active_sources)
 
-        return tuple(sorted(active_sources, key=lambda source: source.name.casefold()))
-
-    def list_due(self, now: datetime | None = None) -> tuple[SourceRead, ...]:
+    async def list_due(self, db: AsyncSession, now: datetime | None = None) -> tuple[SourceRead, ...]:
         checked_at = now or datetime.now(timezone.utc)
-        sources = self.list(include_inactive=False)
+        sources = await self.list(db, include_inactive=False)
 
         return tuple(source for source in sources if self._is_due(source, checked_at))
 
-    def create(self, payload: SourceCreate) -> SourceRead:
-        if self._has_duplicate_name(payload.name):
+    async def create(self, db: AsyncSession, payload: SourceCreate) -> SourceRead:
+        if await self._has_duplicate_name(db, payload.name):
             raise DuplicateSourceError(payload.name)
 
-        source = SourceRead(**payload.model_dump(), status=SourceStatus.ENABLED)
-        self._sources = {**self._sources, source.id: source}
+        source_data = payload.model_dump()
+        source = Source(
+            **source_data,
+            id=uuid4(),
+            status=SourceStatus.ENABLED,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(source)
+        await db.flush()
 
-        return source
+        return SourceRead.model_validate(source, from_attributes=True)
 
-    def get(self, source_id: UUID) -> SourceRead:
-        source = self._sources.get(source_id)
+    async def get(self, db: AsyncSession, source_id: UUID) -> SourceRead:
+        stmt = select(Source).where(Source.id == source_id)
+        result = await db.execute(stmt)
+        source = result.scalars().first()
 
         if source is None:
             raise SourceNotFoundError(str(source_id))
 
-        return source
+        return SourceRead.model_validate(source, from_attributes=True)
 
-    def update(self, source_id: UUID, payload: SourceUpdate) -> SourceRead:
-        source = self.get(source_id)
+    async def update(self, db: AsyncSession, source_id: UUID, payload: SourceUpdate) -> SourceRead:
+        stmt = select(Source).where(Source.id == source_id)
+        result = await db.execute(stmt)
+        source = result.scalars().first()
+
+        if source is None:
+            raise SourceNotFoundError(str(source_id))
+
         update_data = payload.model_dump(exclude_unset=True)
 
-        if "name" in update_data and self._has_duplicate_name(update_data["name"], ignored_id=source_id):
+        if "name" in update_data and await self._has_duplicate_name(db, update_data["name"], ignored_id=source_id):
             raise DuplicateSourceError(update_data["name"])
 
-        updated_source = source.model_copy(update=update_data)
-        self._sources = {**self._sources, source_id: updated_source}
+        for key, value in update_data.items():
+            setattr(source, key, value)
 
-        return updated_source
+        await db.flush()
 
-    def mark_success(self, source_id: UUID, result_count: int) -> SourceRead:
-        source = self.get(source_id)
-        updated_source = source.model_copy(
-            update={
-                "status": SourceStatus.ENABLED,
-                "last_sync_at": datetime.now(timezone.utc),
-                "last_result_count": result_count,
-                "last_error": None,
-            }
-        )
-        self._sources = {**self._sources, source_id: updated_source}
+        return SourceRead.model_validate(source, from_attributes=True)
 
-        return updated_source
+    async def mark_success(self, db: AsyncSession, source_id: UUID, result_count: int) -> SourceRead:
+        stmt = select(Source).where(Source.id == source_id)
+        result = await db.execute(stmt)
+        source = result.scalars().first()
 
-    def mark_error(self, source_id: UUID, error: str) -> SourceRead:
-        source = self.get(source_id)
-        updated_source = source.model_copy(
-            update={
-                "status": SourceStatus.ERROR,
-                "last_sync_at": datetime.now(timezone.utc),
-                "last_error": error[:1000],
-            }
-        )
-        self._sources = {**self._sources, source_id: updated_source}
+        if source is None:
+            raise SourceNotFoundError(str(source_id))
 
-        return updated_source
+        source.status = SourceStatus.ENABLED
+        source.last_sync_at = datetime.now(timezone.utc)
+        source.last_result_count = result_count
+        source.last_error = None
 
-    def _has_duplicate_name(self, name: str, ignored_id: UUID | None = None) -> bool:
+        await db.flush()
+
+        return SourceRead.model_validate(source, from_attributes=True)
+
+    async def mark_error(self, db: AsyncSession, source_id: UUID, error: str) -> SourceRead:
+        stmt = select(Source).where(Source.id == source_id)
+        result = await db.execute(stmt)
+        source = result.scalars().first()
+
+        if source is None:
+            raise SourceNotFoundError(str(source_id))
+
+        source.status = SourceStatus.ERROR
+        source.last_sync_at = datetime.now(timezone.utc)
+        source.last_error = error[:1000]
+
+        await db.flush()
+
+        return SourceRead.model_validate(source, from_attributes=True)
+
+    async def _has_duplicate_name(self, db: AsyncSession, name: str, ignored_id: UUID | None = None) -> bool:
         normalized_name = name.casefold().strip()
+        stmt = select(Source)
+        result = await db.execute(stmt)
+        sources = result.scalars().all()
 
         return any(
             source.name.casefold().strip() == normalized_name and source.id != ignored_id
-            for source in self._sources.values()
+            for source in sources
         )
 
     def _is_due(self, source: SourceRead, checked_at: datetime) -> bool:
@@ -114,32 +142,35 @@ class SourceRegistryService:
         if required_interval is None:
             return False
 
-        return checked_at - source.last_sync_at >= required_interval
+        return checked_at - source.last_sync_at.replace(tzinfo=timezone.utc) >= required_interval
 
 
-DEFAULT_OSINT_SOURCES: tuple[SourceRead, ...] = (
-    SourceRead(
+DEFAULT_OSINT_SOURCES: tuple[SourceCreate, ...] = (
+    SourceCreate(
         name="ReliefWeb ICT Jobs",
         url="https://api.reliefweb.int/v1/jobs",
         type=SourceType.API,
         frequency=SourceFrequency.DAILY,
         adapter_key="reliefweb_jobs_api",
+        is_active=True,
     ),
-    SourceRead(
+    SourceCreate(
         name="UN Talent RSS",
         url="https://untalent.org/jobs/rss",
         type=SourceType.RSS,
         frequency=SourceFrequency.DAILY,
         adapter_key="untalent_rss",
+        is_active=True,
     ),
-    SourceRead(
+    SourceCreate(
         name="Opportunities For Youth",
         url="https://opportunitiesforyouth.org/",
         type=SourceType.SCRAPER,
         frequency=SourceFrequency.DAILY,
         adapter_key="ofy_home",
+        is_active=True,
     ),
 )
 
 
-source_registry_service = SourceRegistryService(initial_sources=DEFAULT_OSINT_SOURCES)
+source_registry_service = SourceRegistryService()

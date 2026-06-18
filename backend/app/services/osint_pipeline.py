@@ -4,6 +4,7 @@ import hashlib
 from uuid import UUID
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.opportunity import OpportunityCreate, OpportunityStatus
 from app.schemas.osint import CollectionRunRead, CollectionRunStatus, ExtractedOpportunityDraft, FetchedDocument, ValidationStatus
@@ -16,6 +17,7 @@ from app.services.dedup_service import DeduplicationCandidate, detect_duplicate
 from app.services.opportunity_service import OpportunityService, opportunity_service
 from app.services.osint_extractor import GenericOpportunityExtractor
 from app.services.source_registry_service import SourceRegistryService, source_registry_service
+from app.models.collection_run import CollectionRun
 
 
 FetchSource = Callable[[SourceRead], Awaitable[FetchedDocument]]
@@ -61,42 +63,38 @@ class OsintPipeline:
         self._extractor = extractor
         self._fetcher = fetcher
         self._collector_factories = collector_factories or DEFAULT_COLLECTOR_FACTORIES
-        self._content_hashes: frozenset[str] = frozenset()
-        self._runs: tuple[CollectionRunRead, ...] = ()
 
-    def list_runs(self) -> tuple[CollectionRunRead, ...]:
-        return tuple(sorted(self._runs, key=lambda run: run.started_at, reverse=True))
+    async def collect_all_sources(self, db: AsyncSession) -> tuple[CollectionRunRead, ...]:
+        sources = await self._source_registry.list(db, include_inactive=False)
+        return await self._collect_sources(db, sources)
 
-    async def collect_all_sources(self) -> tuple[CollectionRunRead, ...]:
-        sources = self._source_registry.list(include_inactive=False)
-        return await self._collect_sources(sources)
+    async def collect_due_sources(self, db: AsyncSession) -> tuple[CollectionRunRead, ...]:
+        sources = await self._source_registry.list_due(db)
+        return await self._collect_sources(db, sources)
 
-    async def collect_due_sources(self) -> tuple[CollectionRunRead, ...]:
-        sources = self._source_registry.list_due()
-        return await self._collect_sources(sources)
-
-    async def _collect_sources(self, sources: tuple[SourceRead, ...]) -> tuple[CollectionRunRead, ...]:
+    async def _collect_sources(self, db: AsyncSession, sources: tuple[SourceRead, ...]) -> tuple[CollectionRunRead, ...]:
         runs: tuple[CollectionRunRead, ...] = ()
 
         for source in sources:
-            run = await self.collect_source(source.id)
+            run = await self.collect_source(db, source.id)
             runs = (*runs, run)
 
         return runs
 
-    async def collect_source(self, source_id: UUID) -> CollectionRunRead:
-        source = self._source_registry.get(source_id)
+    async def collect_source(self, db: AsyncSession, source_id: UUID) -> CollectionRunRead:
+        source = await self._source_registry.get(db, source_id)
         started_at = datetime.now(timezone.utc)
 
         if not source.is_active:
-            return self._record_failed_run(source, started_at, "Source inactive")
+            return await self._record_failed_run(db, source, started_at, "Source inactive")
 
         try:
             drafts = await self._collect_drafts(source)
-            created_count, duplicate_count = self._publish_drafts(drafts)
-            self._source_registry.mark_success(source.id, created_count)
+            created_count, duplicate_count = await self._publish_drafts(db, drafts)
+            await self._source_registry.mark_success(db, source.id, created_count)
 
-            return self._record_completed_run(
+            return await self._record_completed_run(
+                db=db,
                 source=source,
                 started_at=started_at,
                 pages_seen=1,
@@ -105,8 +103,8 @@ class OsintPipeline:
                 duplicates_skipped=duplicate_count,
             )
         except Exception as error:
-            self._source_registry.mark_error(source.id, str(error))
-            return self._record_failed_run(source, started_at, str(error))
+            await self._source_registry.mark_error(db, source.id, str(error))
+            return await self._record_failed_run(db, source, started_at, str(error))
 
     async def _collect_drafts(self, source: SourceRead) -> tuple[ExtractedOpportunityDraft, ...]:
         collector_factory = self._collector_factories.get(source.adapter_key)
@@ -132,29 +130,43 @@ class OsintPipeline:
             validation_notes=validation_notes,
         )
 
-    def _publish_drafts(self, drafts: tuple[ExtractedOpportunityDraft, ...]) -> tuple[int, int]:
+    async def _publish_drafts(self, db: AsyncSession, drafts: tuple[ExtractedOpportunityDraft, ...]) -> tuple[int, int]:
         created_count = 0
         duplicate_count = 0
+        content_hashes: set[str] = set()
 
         for draft in drafts:
             if draft.validation_status is ValidationStatus.REJECTED:
                 continue
 
-            if draft.content_hash in self._content_hashes or self._is_duplicate(draft.payload):
+            if draft.content_hash in content_hashes or await self._is_duplicate(db, draft.payload, draft.content_hash):
                 duplicate_count = duplicate_count + 1
-                self._content_hashes = self._content_hashes | frozenset((draft.content_hash,))
+                content_hashes.add(draft.content_hash)
                 continue
 
-            created = self._opportunity_service.create(draft.payload)
+            # Pass content_hash to create
+            payload_with_hash = draft.payload.model_copy(update={"content_hash": draft.content_hash})
+            created = await self._opportunity_service.create(db, payload_with_hash)
             if draft.validation_status is ValidationStatus.NEEDS_REVIEW:
-                self._opportunity_service.update_status(created.id, OpportunityStatus.ANALYZING)
+                await self._opportunity_service.update_status(db, created.id, OpportunityStatus.ANALYZING)
 
             created_count = created_count + 1
-            self._content_hashes = self._content_hashes | frozenset((draft.content_hash,))
+            content_hashes.add(draft.content_hash)
 
         return created_count, duplicate_count
 
-    def _is_duplicate(self, payload: OpportunityCreate) -> bool:
+    async def _is_duplicate(self, db: AsyncSession, payload: OpportunityCreate, content_hash: str) -> bool:
+        from app.models.opportunity import Opportunity
+        from sqlalchemy import select
+        
+        # 1. Fast check by content_hash
+        stmt = select(Opportunity).where(Opportunity.content_hash == content_hash)
+        result = await db.execute(stmt)
+        if result.scalars().first() is not None:
+            return True
+
+        # 2. Semantic check via DeduplicationCandidate
+        existing_opportunities = await self._opportunity_service.list(db)
         existing_candidates = tuple(
             DeduplicationCandidate(
                 id=str(opportunity.id),
@@ -162,7 +174,7 @@ class OsintPipeline:
                 organization=opportunity.organization,
                 official_url=opportunity.official_url,
             )
-            for opportunity in self._opportunity_service.list()
+            for opportunity in existing_opportunities
         )
         candidate = DeduplicationCandidate(
             id=payload.external_id,
@@ -182,8 +194,9 @@ class OsintPipeline:
 
         return hashlib.sha256(raw_value.encode("utf-8")).hexdigest()
 
-    def _record_completed_run(
+    async def _record_completed_run(
         self,
+        db: AsyncSession,
         source: SourceRead,
         started_at: datetime,
         pages_seen: int,
@@ -191,11 +204,31 @@ class OsintPipeline:
         items_created: int,
         duplicates_skipped: int,
     ) -> CollectionRunRead:
-        run = CollectionRunRead(
+        import uuid
+        run_id = uuid.uuid4()
+        run = CollectionRun(
+            id=run_id,
             source_id=source.id,
             source_name=source.name,
             started_at=started_at,
             finished_at=datetime.now(timezone.utc),
+            status=CollectionRunStatus.COMPLETED.value,
+            pages_seen=pages_seen,
+            items_found=items_found,
+            items_created=items_created,
+            items_updated=0,
+            duplicates_skipped=duplicates_skipped,
+            error=None,
+        )
+        db.add(run)
+        await db.flush()
+
+        return CollectionRunRead(
+            id=str(run_id),
+            source_id=source.id,
+            source_name=source.name,
+            started_at=run.started_at,
+            finished_at=run.finished_at,
             status=CollectionRunStatus.COMPLETED,
             pages_seen=pages_seen,
             items_found=items_found,
@@ -204,16 +237,33 @@ class OsintPipeline:
             duplicates_skipped=duplicates_skipped,
             error=None,
         )
-        self._runs = (*self._runs, run)
 
-        return run
-
-    def _record_failed_run(self, source: SourceRead, started_at: datetime, error: str) -> CollectionRunRead:
-        run = CollectionRunRead(
+    async def _record_failed_run(self, db: AsyncSession, source: SourceRead, started_at: datetime, error: str) -> CollectionRunRead:
+        import uuid
+        run_id = uuid.uuid4()
+        run = CollectionRun(
+            id=run_id,
             source_id=source.id,
             source_name=source.name,
             started_at=started_at,
             finished_at=datetime.now(timezone.utc),
+            status=CollectionRunStatus.FAILED.value,
+            pages_seen=0,
+            items_found=0,
+            items_created=0,
+            items_updated=0,
+            duplicates_skipped=0,
+            error=error[:1000],
+        )
+        db.add(run)
+        await db.flush()
+
+        return CollectionRunRead(
+            id=str(run_id),
+            source_id=source.id,
+            source_name=source.name,
+            started_at=run.started_at,
+            finished_at=run.finished_at,
             status=CollectionRunStatus.FAILED,
             pages_seen=0,
             items_found=0,
@@ -222,9 +272,6 @@ class OsintPipeline:
             duplicates_skipped=0,
             error=error[:1000],
         )
-        self._runs = (*self._runs, run)
-
-        return run
 
 
 osint_pipeline = OsintPipeline(

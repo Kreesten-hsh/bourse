@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import httpx
@@ -7,6 +8,7 @@ from app.schemas.opportunity import OpportunityRead
 
 
 TELEGRAM_API_BASE = "https://api.telegram.org"
+logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
@@ -21,15 +23,21 @@ class TelegramNotifier:
         settings = get_settings()
 
         if settings.telegram_bot_token is None or settings.telegram_chat_id is None:
+            logger.warning("TelegramNotifier: Ignoré car TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID est absent")
             return
 
         token = settings.telegram_bot_token.get_secret_value()
         endpoint = f"{TELEGRAM_API_BASE}/bot{token}/sendMessage"
         payload = {"chat_id": settings.telegram_chat_id, "text": message, "disable_web_page_preview": False}
 
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.post(endpoint, json=payload)
-            response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.post(endpoint, json=payload)
+                response.raise_for_status()
+            logger.info("TelegramNotifier: Message envoyé avec succès")
+        except httpx.HTTPError as error:
+            logger.error(f"TelegramNotifier: Échec de l'envoi du message - {error}")
+            raise
 
 
 def format_priority_message(opportunity: OpportunityRead) -> str:

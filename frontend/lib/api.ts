@@ -72,6 +72,11 @@ export type ApiClient = Readonly<{
     collect: (id: string) => Promise<CollectionRunRead>;
     runs: () => Promise<ReadonlyArray<CollectionRunRead>>;
   };
+  saved: {
+    list: () => Promise<ReadonlyArray<Opportunity>>;
+    save: (id: string) => Promise<void>;
+    remove: (id: string) => Promise<void>;
+  };
 }>;
 
 export function createApiClient(fetcher: typeof fetch = fetch): ApiClient {
@@ -106,6 +111,20 @@ export function createApiClient(fetcher: typeof fetch = fetch): ApiClient {
           method: "POST"
         }),
       runs: () => requestJson<ReadonlyArray<CollectionRunRead>>(buildUrl("/api/v1/sources/runs"), fetcher)
+    },
+    saved: {
+      list: () => requestJson<ReadonlyArray<Opportunity>>(buildUrl("/api/v1/saved"), fetcher),
+      save: (id) =>
+        requestJson<void>(buildUrl(`/api/v1/saved/${encodeURIComponent(id)}`), fetcher, {
+          method: "POST"
+        }),
+      remove: async (id) => {
+        const url = buildUrl(`/api/v1/saved/${encodeURIComponent(id)}`);
+        const response = await fetcher(url, { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+      }
     }
   };
 }
